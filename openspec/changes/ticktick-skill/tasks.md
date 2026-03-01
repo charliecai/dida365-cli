@@ -44,7 +44,7 @@
 ### 1.6 Phase 1 测试与验证
 
 - [x] 编写核心功能集成测试
-- [ ] 手动端到端测试 (实际 API 调用)
+- [x] 手动端到端测试 (实际 API 调用)
 - [x] 边界情况测试 (无效 Token、网络超时、空项目等)
 
 ## Phase 2: Claude Code Skill (`/ticktick`)
@@ -62,9 +62,9 @@
 ### 2.3 安装与集成
 
 - [x] 实现安装脚本: 软链接 skill/ → ~/.claude/skills/ticktick/
-- [ ] 端到端测试: 通过 `/ticktick` 调用 Claude 验证各功能
+- [x] 端到端测试: 通过 `/ticktick` 调用 Claude 验证各功能
 
 ## Phase 3: 文档
 
-- [ ] 编写 README.md (项目说明、安装配置、使用方法)
-- [ ] 记录已知限制与 FAQ
+- [x] 编写 README.md (项目说明、安装配置、使用方法)
+- [x] 记录已知限制与 FAQ
