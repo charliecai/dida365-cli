@@ -101,8 +101,8 @@ class DidaClient:
             msg = f"API 错误 (HTTP {response.status_code}): {response.text}"
             raise ApiError(msg, status_code=response.status_code)
 
-        # DELETE returns 204 No Content
-        if response.status_code == 204:
+        # Some endpoints return empty body (204 No Content, or 200 with no body)
+        if response.status_code == 204 or not response.content:
             return None
 
         return response.json()
@@ -142,8 +142,8 @@ class DidaClient:
         self._request("POST", f"/project/{project_id}/task/{task_id}/complete")
 
     def delete_task(self, project_id: str, task_id: str) -> None:
-        """Delete a task. DELETE /task/{pid}/{tid}"""
-        self._request("DELETE", f"/task/{project_id}/{task_id}")
+        """Delete a task. DELETE /project/{pid}/task/{tid}"""
+        self._request("DELETE", f"/project/{project_id}/task/{task_id}")
 
     def batch_create_tasks(self, tasks: list[Task]) -> list[Task]:
         """Batch create tasks. POST /batch/task"""

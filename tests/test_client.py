@@ -84,7 +84,7 @@ class TestDidaClient:
 
     @respx.mock
     def test_delete_task(self, client: DidaClient) -> None:
-        respx.delete("https://api.dida365.com/open/v1/task/p1/t1").mock(
+        respx.delete("https://api.dida365.com/open/v1/project/p1/task/t1").mock(
             return_value=httpx.Response(204)
         )
         # Should not raise
