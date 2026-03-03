@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_episodic-memory_episodic-memory__search",
+      "mcp__plugin_serena_serena__list_memories",
+      "mcp__openspec__list_changes",
+      "mcp__openspec__show_change",
+      "mcp__openspec__list_specs",
+      "mcp__openspec__read_tasks",
+      "mcp__plugin_serena_serena__list_dir",
+      "Bash(uv run:*)",
+      "Bash(dida:*)",
+      "Bash(uv pip:*)",
+      "Bash(.venv/bin/dida:*)",
+      "Bash(echo:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__plugin_serena_serena__check_onboarding_performed",
+      "mcp__plugin_serena_serena__activate_project",
+      "mcp__plugin_serena_serena__find_symbol",
+      "mcp__plugin_serena_serena__read_file"
+    ]
+  }
+}
