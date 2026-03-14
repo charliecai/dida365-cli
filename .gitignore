@@ -29,7 +29,6 @@ htmlcov/
 
 # Secrets — never commit tokens
 .dida365/
-
 openspec/
 docs/
 .serena/
