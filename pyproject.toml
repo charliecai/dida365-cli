@@ -40,6 +40,7 @@ select = [
 ]
 ignore = [
     "RUF001",  # Allow ambiguous unicode chars (Chinese punctuation in user-facing strings)
+    "RUF002",  # Allow ambiguous unicode chars in docstrings (Chinese punctuation)
 ]
 
 [tool.ruff.lint.isort]

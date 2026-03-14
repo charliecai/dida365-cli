@@ -1,13 +1,13 @@
-# Dida365 CLI & Claude Code Skill
+# Dida365 CLI & AI Agent Skill
 
-CLI tool for managing Dida365 tasks via Open API v1, with a Claude Code `/dida365` skill for natural language task management.
+CLI tool for managing Dida365 tasks via Open API v1, with an AI Agent skill (`/dida365`) for natural language task management.
 
 ## Architecture
 
 ```
 ┌──────────────────────────────┐
-│  Claude Code Skill           │
-│  /dida365 (SKILL.md)        │
+│  AI Agent Skill              │
+│  /dida365 (SKILL.md)         │
 │  Natural language → CLI      │
 └──────────┬───────────────────┘
            │ calls
@@ -34,6 +34,15 @@ CLI tool for managing Dida365 tasks via Open API v1, with a Claude Code `/dida36
 
 ## Installation
 
+### Method 1: Via AI Agent (Recommended)
+
+If you're using an AI coding agent (Claude Code, Cursor, Windsurf, etc.):
+
+1. Copy the `skill/dida365/` directory to your agent's skill directory (e.g., `~/.claude/skills/dida365/` for Claude Code)
+2. Use the `/dida365` skill — the agent will automatically install the CLI and guide you through authentication
+
+### Method 2: Manual Installation
+
 ```bash
 git clone https://github.com/charliecai/dida365-cli.git && cd dida365-cli
 ./scripts/install.sh
@@ -42,6 +51,14 @@ git clone https://github.com/charliecai/dida365-cli.git && cd dida365-cli
 This will:
 1. Install the `dida` CLI via `uv pip install -e .`
 2. Symlink the `/dida365` skill to `~/.claude/skills/dida365/`
+
+### Verify Installation
+
+```bash
+dida setup
+```
+
+This checks Python version, uv availability, CLI installation, and authentication status.
 
 ## Authentication
 
@@ -101,9 +118,9 @@ dida task add "Test" --json
 # {"success": true, "data": {"id": "...", "title": "Test", ...}}
 ```
 
-## Claude Code Skill
+## AI Agent Skill
 
-After installation, use `/dida365` in Claude Code:
+After installation, use `/dida365` in your AI agent:
 
 ```
 /dida365 show my work tasks
@@ -112,7 +129,9 @@ After installation, use `/dida365` in Claude Code:
 /dida365 what projects do I have
 ```
 
-Claude will translate your natural language to `dida` CLI commands and present the results.
+The agent will translate your natural language to `dida` CLI commands and present the results.
+
+**Supported agents:** Any AI coding agent that can execute shell commands (Claude Code, Cursor, Windsurf, etc.)
 
 ## Development
 

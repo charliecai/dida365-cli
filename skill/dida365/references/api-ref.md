@@ -1,5 +1,11 @@
 # Dida CLI Command Reference
 
+## Setup
+
+| Command | Description |
+|---|---|
+| `dida setup [--json]` | Check environment: Python, uv, CLI version, auth status |
+
 ## Authentication
 
 | Command | Description |

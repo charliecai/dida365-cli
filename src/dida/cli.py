@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import platform
+import shutil
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -69,6 +71,73 @@ def _handle_error(e: Exception, *, as_json: bool = False) -> None:
             output_error_json(str(e), "UNKNOWN_ERROR")
         else:
             output_error(f"未知错误: {e}")
+        raise typer.Exit(code=1)
+
+
+# ── Setup command ────────────────────────────────────────────────────
+
+
+@app.command("setup")
+def setup(
+    as_json: JsonOption = False,
+) -> None:
+    """检查环境状态，引导初始化配置。"""
+    checks: list[dict] = []
+    all_ok = True
+
+    # 1. Python version
+    py_ver = platform.python_version()
+    py_ok = sys.version_info >= (3, 12)
+    checks.append({"name": "Python", "version": py_ver, "ok": py_ok})
+    if not py_ok:
+        all_ok = False
+
+    # 2. uv available
+    uv_path = shutil.which("uv")
+    uv_ok = uv_path is not None
+    checks.append({"name": "uv", "ok": uv_ok})
+    if not uv_ok:
+        all_ok = False
+
+    # 3. dida CLI version
+    from dida import __version__
+
+    checks.append({"name": "dida CLI", "version": __version__, "ok": True})
+
+    # 4. Auth status
+    token_data = load_token()
+    auth_ok = bool(token_data and token_data.get("access_token"))
+    checks.append({"name": "认证状态", "ok": auth_ok})
+    if not auth_ok:
+        all_ok = False
+
+    if as_json:
+        output_json({"ok": all_ok, "checks": checks})
+        if not all_ok:
+            raise typer.Exit(code=1)
+        return
+
+    # Rich output
+    for check in checks:
+        status = "[green]✓[/green]" if check["ok"] else "[red]✗[/red]"
+        version = f" ({check['version']})" if "version" in check else ""
+        console.print(f"  {status} {check['name']}{version}")
+
+    console.print()
+
+    if not py_ok:
+        output_error("需要 Python 3.12+")
+    if not uv_ok:
+        output_error("未找到 uv，请安装: https://docs.astral.sh/uv/")
+    if not auth_ok:
+        console.print("[yellow]未认证。请按以下步骤操作：[/yellow]")
+        console.print("  1. 前往 https://developer.dida365.com/ 注册开发者应用")
+        console.print("  2. 设置回调地址为 http://localhost:18365/callback")
+        console.print("  3. 运行 [bold]dida auth login[/bold] 完成认证")
+
+    if all_ok:
+        output_success("环境就绪")
+    else:
         raise typer.Exit(code=1)
 
 

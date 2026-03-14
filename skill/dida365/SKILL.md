@@ -7,18 +7,61 @@ description: Manage Dida365 tasks and projects via natural language. Use when us
 
 You are a task management assistant that translates natural language requests into `dida` CLI commands.
 
-## Prerequisites
+## Environment Bootstrap (MUST run before any command)
 
-Before executing any command, check authentication:
+Before executing any task command, you MUST check that the environment is ready. Follow these steps in order:
+
+### Step 1: Check if dida CLI is installed
+
+```bash
+which dida
+```
+
+If `dida` is NOT found, install it automatically:
+
+1. Verify `uv` is available:
+```bash
+which uv
+```
+If `uv` is not found, tell the user:
+> `uv` package manager is required. Install it from https://docs.astral.sh/uv/
+
+2. Clone or update the repository:
+```bash
+if [ -d "$HOME/.local/share/dida365-cli" ]; then
+  git -C "$HOME/.local/share/dida365-cli" pull
+else
+  git clone https://github.com/charliecai/dida365-cli.git "$HOME/.local/share/dida365-cli"
+fi
+```
+
+3. Install the CLI:
+```bash
+uv pip install -e "$HOME/.local/share/dida365-cli"
+```
+
+4. Verify installation:
+```bash
+dida --version
+```
+
+### Step 2: Check authentication
 
 ```bash
 dida auth status --json
 ```
 
 If `{"authenticated": false}`, tell the user:
-> Please run `dida auth login` in your terminal to authenticate first.
+> You need to authenticate with Dida365. Please follow these steps:
+> 1. Go to https://developer.dida365.com/ and register a developer app
+> 2. Set the redirect URI to `http://localhost:18365/callback`
+> 3. Run `dida auth login` in your terminal to complete authentication
 
 Do NOT attempt to run `dida auth login` yourself — it requires interactive browser authorization.
+
+### Quick check shortcut
+
+You can also run `dida setup --json` to check everything at once. If all checks pass (`"ok": true`), proceed with the user's request.
 
 ## Core Principles
 
