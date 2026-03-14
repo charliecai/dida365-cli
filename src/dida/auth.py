@@ -21,8 +21,8 @@ AUTH_URL = "https://dida365.com/oauth/authorize"
 TOKEN_URL = "https://dida365.com/oauth/token"
 REDIRECT_URI = "http://localhost:18365/callback"
 
-# Config paths — use ~/.ticktick to avoid macOS ~/.config ownership issues
-CONFIG_DIR = Path.home() / ".ticktick"
+# Config paths — use ~/.dida365 to avoid macOS ~/.config ownership issues
+CONFIG_DIR = Path.home() / ".dida365"
 TOKEN_FILE = CONFIG_DIR / "token.json"
 
 

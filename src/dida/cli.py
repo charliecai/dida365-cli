@@ -1,4 +1,4 @@
-"""Dida CLI - Command line tool for TickTick/Dida365 task management."""
+"""Dida CLI - Command line tool for Dida365 task management."""
 
 from __future__ import annotations
 
@@ -58,17 +58,18 @@ def _handle_error(e: Exception, *, as_json: bool = False) -> None:
         else:
             output_error(str(e))
         raise typer.Exit(code=2)
-    if isinstance(e, ApiError):
+    elif isinstance(e, ApiError):
         if as_json:
             output_error_json(str(e), e.code)
         else:
             output_error(str(e))
         raise typer.Exit(code=1)
-    if as_json:
-        output_error_json(str(e), "UNKNOWN_ERROR")
     else:
-        output_error(f"未知错误: {e}")
-    raise typer.Exit(code=1)
+        if as_json:
+            output_error_json(str(e), "UNKNOWN_ERROR")
+        else:
+            output_error(f"未知错误: {e}")
+        raise typer.Exit(code=1)
 
 
 # ── Auth commands ────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ def task_add(
 @task_app.command("list")
 def task_list(
     project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
+    all_projects: Annotated[bool, typer.Option("--all", help="包含已关闭项目的任务")] = False,
     as_json: JsonOption = False,
 ) -> None:
     """查看任务列表。"""
@@ -193,8 +195,10 @@ def task_list(
             project_data = client.get_project_data(project_id)
             tasks = project_data.tasks
         else:
-            # List inbox tasks - get all projects and find inbox-like tasks
+            # List tasks from all (or only active) projects
             projects = client.list_projects()
+            if not all_projects:
+                projects = [p for p in projects if not p.closed]
             tasks = []
             for p in projects:
                 pd = client.get_project_data(p.id)
@@ -212,6 +216,9 @@ def task_list(
 @task_app.command("update")
 def task_update(
     task_id: Annotated[str, typer.Argument(help="任务 ID")],
+    project_id: Annotated[
+        str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
+    ] = None,
     title: Annotated[str | None, typer.Option("--title", "-t", help="新标题")] = None,
     priority: Annotated[
         str | None, typer.Option("--priority", "-p", help="优先级: none/low/medium/high")
@@ -223,16 +230,16 @@ def task_update(
     """更新任务。"""
     client = _get_client()
     try:
-        # Find the task's project ID
-        project_id = client.find_task_project_id(task_id)
-        if project_id is None:
+        # Find the task's project ID (skip lookup if provided)
+        pid = project_id or client.find_task_project_id(task_id)
+        if pid is None:
             if as_json:
                 output_error_json(f"未找到任务: {task_id}", "NOT_FOUND")
             else:
                 output_error(f"未找到任务: {task_id}")
             raise typer.Exit(code=1)
 
-        task = Task(id=task_id, project_id=project_id)
+        task = Task(id=task_id, project_id=pid)
         if title:
             task.title = title
         if priority:
@@ -259,20 +266,23 @@ def task_update(
 @task_app.command("done")
 def task_done(
     task_id: Annotated[str, typer.Argument(help="任务 ID")],
+    project_id: Annotated[
+        str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
+    ] = None,
     as_json: JsonOption = False,
 ) -> None:
     """完成任务。"""
     client = _get_client()
     try:
-        project_id = client.find_task_project_id(task_id)
-        if project_id is None:
+        pid = project_id or client.find_task_project_id(task_id)
+        if pid is None:
             if as_json:
                 output_error_json(f"未找到任务: {task_id}", "NOT_FOUND")
             else:
                 output_error(f"未找到任务: {task_id}")
             raise typer.Exit(code=1)
 
-        client.complete_task(project_id, task_id)
+        client.complete_task(pid, task_id)
         if as_json:
             output_json({"success": True, "data": {"id": task_id, "status": "completed"}})
         else:
@@ -286,6 +296,9 @@ def task_done(
 @task_app.command("delete")
 def task_delete(
     task_id: Annotated[str, typer.Argument(help="任务 ID")],
+    project_id: Annotated[
+        str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
+    ] = None,
     yes: Annotated[bool, typer.Option("--yes", "-y", help="跳过确认")] = False,
     as_json: JsonOption = False,
 ) -> None:
@@ -297,15 +310,15 @@ def task_delete(
             console.print("[dim]已取消[/dim]")
             raise typer.Exit(code=0)
 
-        project_id = client.find_task_project_id(task_id)
-        if project_id is None:
+        pid = project_id or client.find_task_project_id(task_id)
+        if pid is None:
             if as_json:
                 output_error_json(f"未找到任务: {task_id}", "NOT_FOUND")
             else:
                 output_error(f"未找到任务: {task_id}")
             raise typer.Exit(code=1)
 
-        client.delete_task(project_id, task_id)
+        client.delete_task(pid, task_id)
         if as_json:
             output_json({"success": True, "data": {"id": task_id, "status": "deleted"}})
         else:

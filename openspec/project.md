@@ -2,7 +2,7 @@
 
 ## Overview
 
-TickTick CLI + Skill — 分层架构项目。底层是一个独立可用的 Python CLI 工具（`dida`），用于通过命令行操作滴答清单 (Dida365)。上层是一个 Claude Code Skill（`/ticktick`），通过调用 CLI 实现自然语言操作任务。
+Dida365 CLI + Skill — 分层架构项目。底层是一个独立可用的 Python CLI 工具（`dida`），用于通过命令行操作滴答清单 (Dida365)。上层是一个 Claude Code Skill（`/dida365`），通过调用 CLI 实现自然语言操作任务。
 
 ## Tech Stack
 
@@ -21,13 +21,13 @@ TickTick CLI + Skill — 分层架构项目。底层是一个独立可用的 Pyt
 - CLI 输出支持 `--json` 格式，方便 Skill 解析
 - Python 代码遵循 PEP 8，使用 ruff 格式化
 - 所有 API 调用包含错误处理和超时控制
-- 敏感信息（Token）存储在 `~/.config/ticktick/`，不硬编码
+- 敏感信息（Token）存储在 `~/.dida365/`，不硬编码
 - Skill 目录结构遵循 Claude Code Agent Skills 开放标准
 
 ## Architecture
 
 ```
-项目根目录 (ticktick/)
+项目根目录 (dida365-cli/)
 ├── src/
 │   └── dida/                 # CLI 核心库（Python 包）
 │       ├── __init__.py
@@ -38,19 +38,19 @@ TickTick CLI + Skill — 分层架构项目。底层是一个独立可用的 Pyt
 ├── tests/                    # 测试
 ├── pyproject.toml            # 项目配置 (uv)
 └── skill/                    # Claude Code Skill
-    └── ticktick/
+    └── dida365/
         ├── SKILL.md          # Skill 定义与指令
         └── references/
             └── api-ref.md    # API 速查
 
 安装后:
   - CLI: `dida` 命令全局可用
-  - Skill: 软链接或复制 skill/ticktick/ → ~/.claude/skills/ticktick/
+  - Skill: 软链接或复制 skill/dida365/ → ~/.claude/skills/dida365/
 ```
 
 ## Development Workflow
 
 1. 使用 OpenSpec 管理需求与任务
-2. 遵循 Conventional Commits
+2. 遵�� Conventional Commits
 3. Phase 1: CLI 核心库开发 → 独立可用
 4. Phase 2: Skill 封装 → 调用 CLI 实现自然语言交互

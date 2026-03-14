@@ -29,6 +29,7 @@ List tasks.
 | Option | Short | Description |
 |---|---|---|
 | `--project` | `-P` | Filter by project name or ID |
+| `--all` | | Include tasks from closed projects |
 | `--json` | | Output JSON format |
 
 ### dida task update \<task_id\>
@@ -41,6 +42,7 @@ Update an existing task.
 | `--priority` | `-p` | New priority |
 | `--due` | `-d` | New due date |
 | `--content` | `-c` | New content |
+| `--project-id` | | Project ID (skip auto-lookup) |
 | `--json` | | Output JSON format |
 
 ### dida task done \<task_id\>
@@ -49,6 +51,7 @@ Mark a task as complete.
 
 | Option | Description |
 |---|---|
+| `--project-id` | Project ID (skip auto-lookup) |
 | `--json` | Output JSON format |
 
 ### dida task delete \<task_id\>
@@ -58,6 +61,7 @@ Delete a task.
 | Option | Short | Description |
 |---|---|---|
 | `--yes` | `-y` | Skip confirmation prompt |
+| `--project-id` | | Project ID (skip auto-lookup) |
 | `--json` | | Output JSON (skips confirmation) |
 
 ### dida task batch-add

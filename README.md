@@ -1,13 +1,13 @@
-# Dida - TickTick/Dida365 CLI & Claude Code Skill
+# Dida365 CLI & Claude Code Skill
 
-CLI tool for managing TickTick/Dida365 tasks via Open API v1, with a Claude Code `/ticktick` skill for natural language task management.
+CLI tool for managing Dida365 tasks via Open API v1, with a Claude Code `/dida365` skill for natural language task management.
 
 ## Architecture
 
 ```
 ┌──────────────────────────────┐
 │  Claude Code Skill           │
-│  /ticktick (SKILL.md)        │
+│  /dida365 (SKILL.md)        │
 │  Natural language → CLI      │
 └──────────┬───────────────────┘
            │ calls
@@ -35,13 +35,13 @@ CLI tool for managing TickTick/Dida365 tasks via Open API v1, with a Claude Code
 ## Installation
 
 ```bash
-git clone <repo-url> && cd ticktick
+git clone https://github.com/charliecai/dida365-cli.git && cd dida365-cli
 ./scripts/install.sh
 ```
 
 This will:
 1. Install the `dida` CLI via `uv pip install -e .`
-2. Symlink the `/ticktick` skill to `~/.claude/skills/ticktick/`
+2. Symlink the `/dida365` skill to `~/.claude/skills/dida365/`
 
 ## Authentication
 
@@ -49,7 +49,7 @@ This will:
 dida auth login
 ```
 
-Follow the prompts to enter your Client ID/Secret, then authorize in the browser. Token is stored at `~/.ticktick/token.json` (permissions 0600).
+Follow the prompts to enter your Client ID/Secret, then authorize in the browser. Token is stored at `~/.dida365/token.json` (permissions 0600).
 
 ```bash
 dida auth status    # Check auth status
@@ -103,13 +103,13 @@ dida task add "Test" --json
 
 ## Claude Code Skill
 
-After installation, use `/ticktick` in Claude Code:
+After installation, use `/dida365` in Claude Code:
 
 ```
-/ticktick show my work tasks
-/ticktick add "Submit report" due tomorrow, high priority
-/ticktick mark the report task as done
-/ticktick what projects do I have
+/dida365 show my work tasks
+/dida365 add "Submit report" due tomorrow, high priority
+/dida365 mark the report task as done
+/dida365 what projects do I have
 ```
 
 Claude will translate your natural language to `dida` CLI commands and present the results.

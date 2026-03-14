@@ -1,7 +1,7 @@
 [project]
 name = "dida"
 version = "0.1.0"
-description = "CLI tool for managing TickTick/Dida365 tasks via Open API v1"
+description = "CLI tool for managing Dida365 tasks via Open API v1"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
