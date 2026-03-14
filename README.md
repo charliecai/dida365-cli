@@ -1,6 +1,6 @@
 # Dida365 CLI & AI Agent Skill
 
-CLI tool for managing Dida365 tasks via Open API v1, with an AI Agent skill (`/dida365`) for natural language task management.
+通过 AI Agent 自然语言管理滴答清单 (Dida365) 任务，底层基于 Dida365 Open API v1。
 
 ## Architecture
 
@@ -23,85 +23,71 @@ CLI tool for managing Dida365 tasks via Open API v1, with an AI Agent skill (`/d
 └──────────────────────────────┘
 ```
 
-## Prerequisites
+## Quick Start
+
+### Step 1: Install Skill
+
+将 `skill/dida365/` 目录安装到你的 AI Agent 的 skills 目录：
+
+**Claude Code:**
+```bash
+git clone https://github.com/charliecai/dida365-cli.git ~/.local/share/dida365-cli
+ln -s ~/.local/share/dida365-cli/skill/dida365 ~/.claude/skills/dida365
+```
+
+**Other agents (Cursor, Windsurf, etc.):**
+将 `skill/dida365/SKILL.md` 复制到对应 agent 的 skill/prompt 目录。
+
+### Step 2: Use the Skill
+
+安装 Skill 后，直接在 AI Agent 中使用 `/dida365`：
+
+```
+/dida365 show my tasks
+```
+
+首次使用时，Agent 会自动检测并完成以下步骤：
+1. 安装 `dida` CLI（如果尚未安装）
+2. 检查认证状态，引导你完成 Dida365 OAuth 认证
+
+### Prerequisites
 
 - Python 3.12+
 - [UV](https://docs.astral.sh/uv/) package manager
-- Dida365 developer account with OAuth app credentials
-  - Register at [Dida365 Developer](https://developer.dida365.com/)
-  - Create an app, set redirect URI to `http://localhost:18365/callback`
-  - Note your Client ID and Client Secret
+- Dida365 developer account — 前往 [developer.dida365.com](https://developer.dida365.com/) 注册应用，设置回调地址为 `http://localhost:18365/callback`
 
-## Installation
+## Manual Setup (without AI Agent)
 
-### Method 1: Via AI Agent (Recommended)
-
-Copy the following prompt and send it to your AI coding agent (Claude Code, Cursor, Windsurf, etc.):
-
-> Please install the Dida365 CLI tool for me. Steps:
-> 1. Clone the repository: `git clone https://github.com/charliecai/dida365-cli.git ~/.local/share/dida365-cli`
-> 2. Install the CLI: `uv pip install -e ~/.local/share/dida365-cli`
-> 3. Run `dida setup` to verify the installation and guide me through authentication
-
-The agent will execute these commands and help you complete the setup process.
-
-### Method 2: Manual Installation
+如果不通过 AI Agent，也可以手动安装：
 
 ```bash
 git clone https://github.com/charliecai/dida365-cli.git && cd dida365-cli
 ./scripts/install.sh
+dida setup    # 检查环境并引导认证
 ```
-
-This will:
-1. Install the `dida` CLI via `uv pip install -e .`
-2. Symlink the `/dida365` skill to `~/.claude/skills/dida365/`
-
-### First-Time Setup
-
-After installation, run:
-
-```bash
-dida setup
-```
-
-This will check your environment (Python, uv, CLI) and interactively guide you through Dida365 authentication if needed.
 
 ## Authentication
 
 ```bash
-dida auth login
+dida auth login     # OAuth 认证（交互式）
+dida auth status    # 查看认证状态
+dida auth logout    # 登出
 ```
 
-Follow the prompts to enter your Client ID/Secret, then authorize in the browser. Token is stored at `~/.dida365/token.json` (permissions 0600).
-
-```bash
-dida auth status    # Check auth status
-dida auth logout    # Remove stored token
-```
+Token 存储在 `~/.dida365/token.json`（权限 0600）。
 
 ## CLI Usage
 
 ### Tasks
 
 ```bash
-# Create
 dida task add "Buy milk" --priority high --due tomorrow --project "Shopping"
-
-# List
 dida task list                          # All tasks
 dida task list --project "Work"         # By project
-
-# Update
 dida task update <task_id> --title "New title" --priority medium
-
-# Complete
 dida task done <task_id>
-
-# Delete
 dida task delete <task_id>              # With confirmation
 dida task delete <task_id> --yes        # Skip confirmation
-
-# Batch create (stdin JSON)
 echo '[{"title":"Task 1"},{"title":"Task 2"}]' | dida task batch-add
 ```
 
@@ -109,24 +95,21 @@ echo '[{"title":"Task 1"},{"title":"Task 2"}]' | dida task batch-add
 
 ```bash
 dida project list                       # List all projects
-dida project show "Work"                # Show project with tasks (fuzzy match)
+dida project show "Work"                # Show project with tasks
 ```
 
 ### JSON Output
 
-All list/action commands support `--json` for structured output:
+All commands support `--json` for structured output:
 
 ```bash
 dida task list --json
 # {"success": true, "data": [...]}
-
-dida task add "Test" --json
-# {"success": true, "data": {"id": "...", "title": "Test", ...}}
 ```
 
 ## AI Agent Skill
 
-After installation, use `/dida365` in your AI agent:
+安装 Skill 后，支持自然语言操作：
 
 ```
 /dida365 show my work tasks
@@ -135,9 +118,7 @@ After installation, use `/dida365` in your AI agent:
 /dida365 what projects do I have
 ```
 
-The agent will translate your natural language to `dida` CLI commands and present the results.
-
-**Supported agents:** Any AI coding agent that can execute shell commands (Claude Code, Cursor, Windsurf, etc.)
+**Supported agents:** Claude Code, Cursor, Windsurf, 以及任何能执行 shell 命令的 AI Agent。
 
 ## Development
 
@@ -150,28 +131,19 @@ uv run pytest tests/ -v          # Run tests
 
 ## Known Limitations
 
-1. **API Rate Limit** — Dida365 Open API limits to 100 requests/minute. Operations like `task done` and `task delete` need to search all projects to find a task's project ID, which can hit this limit if you have many projects.
-
-2. **No Inbox API** — The Open API has no direct "inbox" endpoint. `dida task list` (without `--project`) fetches tasks from all projects, which is slow with many projects.
-
-3. **API Beta Status** — The Dida365 Open API is still in Beta. Endpoints may change without notice.
-
-4. **No Tag Support** — The Open API does not expose tag/label management.
-
-5. **No Habit Tracking** — The Open API does not support habit/punch-in features.
-
-6. **Token Refresh** — If the refresh token expires, you'll need to re-run `dida auth login`.
+1. **API Rate Limit** — 100 requests/minute。使用 `--project-id` 可减少 API 调用。
+2. **No Inbox API** — 无直接收件箱接口，`dida task list` 需遍历所有项目。
+3. **API Beta Status** — Dida365 Open API 仍为 Beta。
+4. **No Tag Support** — API 不支持标签管理。
+5. **No Habit Tracking** — API 不支持打卡/习惯功能。
 
 ## FAQ
 
-**Q: How do I get Client ID and Client Secret?**
-A: Register at [Dida365 Developer](https://developer.dida365.com/), create an app, and set the redirect URI to `http://localhost:18365/callback`.
+**Q: 如何获取 Client ID 和 Client Secret?**
+A: 前往 [developer.dida365.com](https://developer.dida365.com/) 注册应用，设置回调地址为 `http://localhost:18365/callback`。
 
-**Q: `dida auth login` opens the browser but nothing happens?**
-A: Make sure port 18365 is not in use. The CLI starts a local HTTP server on that port to receive the OAuth callback.
+**Q: `dida auth login` 打开浏览器后没有反应?**
+A: 确保端口 18365 未被占用。
 
-**Q: Commands are slow or hit rate limits?**
-A: If you have many projects, operations that search for a task (done, delete, update) need to iterate through all projects. Consider using `--project` flag to narrow the search scope in future versions.
-
-**Q: Can I use this with TickTick (international version)?**
-A: Currently configured for Dida365 (`api.dida365.com`). To use with TickTick international, you would need to change the API base URL to `api.ticktick.com` and OAuth URLs to `ticktick.com`.
+**Q: 可以用于 TickTick 国际版吗?**
+A: 当前配置为 Dida365 (`api.dida365.com`)。使用国际版需修改 API 地址为 `api.ticktick.com`。
