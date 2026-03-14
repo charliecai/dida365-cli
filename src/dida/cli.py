@@ -81,7 +81,7 @@ def _handle_error(e: Exception, *, as_json: bool = False) -> None:
 def setup(
     as_json: JsonOption = False,
 ) -> None:
-    """检查环境状态，引导初始化配置。"""
+    """检查环境并引导完成初始化配置。"""
     checks: list[dict] = []
     all_ok = True
 
@@ -111,13 +111,15 @@ def setup(
     if not auth_ok:
         all_ok = False
 
+    # JSON mode: report only, no interactive flow
     if as_json:
         output_json({"ok": all_ok, "checks": checks})
         if not all_ok:
             raise typer.Exit(code=1)
         return
 
-    # Rich output
+    # Rich output — environment checks
+    console.print("[bold]环境检查[/bold]")
     for check in checks:
         status = "[green]✓[/green]" if check["ok"] else "[red]✗[/red]"
         version = f" ({check['version']})" if "version" in check else ""
@@ -127,18 +129,39 @@ def setup(
 
     if not py_ok:
         output_error("需要 Python 3.12+")
+        raise typer.Exit(code=1)
     if not uv_ok:
         output_error("未找到 uv，请安装: https://docs.astral.sh/uv/")
-    if not auth_ok:
-        console.print("[yellow]未认证。请按以下步骤操作：[/yellow]")
-        console.print("  1. 前往 https://developer.dida365.com/ 注册开发者应用")
-        console.print("  2. 设置回调地址为 http://localhost:18365/callback")
-        console.print("  3. 运行 [bold]dida auth login[/bold] 完成认证")
-
-    if all_ok:
-        output_success("环境就绪")
-    else:
         raise typer.Exit(code=1)
+
+    # Interactive auth setup
+    if not auth_ok:
+        console.print("[bold]认证配置[/bold]")
+        console.print("  需要滴答清单开发者应用的 Client ID 和 Client Secret。")
+        console.print("  如果还没有，请前往 https://developer.dida365.com/ 注册应用，")
+        console.print("  并设置回调地址为 [cyan]http://localhost:18365/callback[/cyan]")
+        console.print()
+
+        if Confirm.ask("是否现在进行认证?"):
+            client_id = Prompt.ask("请输入 Client ID")
+            client_secret = Prompt.ask("请输入 Client Secret")
+
+            if not client_id or not client_secret:
+                output_error("Client ID 和 Client Secret 不能为空")
+                raise typer.Exit(code=1)
+
+            console.print("[dim]正在打开浏览器进行授权...[/dim]")
+            try:
+                oauth_login(client_id, client_secret)
+                output_success("认证成功！环境已就绪。")
+            except RuntimeError as e:
+                output_error(str(e))
+                raise typer.Exit(code=1) from None
+        else:
+            console.print("[dim]跳过认证。稍后可运行 dida auth login 完成。[/dim]")
+            raise typer.Exit(code=1)
+    else:
+        output_success("环境就绪")
 
 
 # ── Auth commands ────────────────────────────────────────────────────

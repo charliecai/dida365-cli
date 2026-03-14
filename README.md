@@ -36,10 +36,14 @@ CLI tool for managing Dida365 tasks via Open API v1, with an AI Agent skill (`/d
 
 ### Method 1: Via AI Agent (Recommended)
 
-If you're using an AI coding agent (Claude Code, Cursor, Windsurf, etc.):
+Copy the following prompt and send it to your AI coding agent (Claude Code, Cursor, Windsurf, etc.):
 
-1. Copy the `skill/dida365/` directory to your agent's skill directory (e.g., `~/.claude/skills/dida365/` for Claude Code)
-2. Use the `/dida365` skill — the agent will automatically install the CLI and guide you through authentication
+> Please install the Dida365 CLI tool for me. Steps:
+> 1. Clone the repository: `git clone https://github.com/charliecai/dida365-cli.git ~/.local/share/dida365-cli`
+> 2. Install the CLI: `uv pip install -e ~/.local/share/dida365-cli`
+> 3. Run `dida setup` to verify the installation and guide me through authentication
+
+The agent will execute these commands and help you complete the setup process.
 
 ### Method 2: Manual Installation
 
@@ -52,13 +56,15 @@ This will:
 1. Install the `dida` CLI via `uv pip install -e .`
 2. Symlink the `/dida365` skill to `~/.claude/skills/dida365/`
 
-### Verify Installation
+### First-Time Setup
+
+After installation, run:
 
 ```bash
 dida setup
 ```
 
-This checks Python version, uv availability, CLI installation, and authentication status.
+This will check your environment (Python, uv, CLI) and interactively guide you through Dida365 authentication if needed.
 
 ## Authentication
 
