@@ -1,6 +1,7 @@
 ---
 name: dida365
-description: Manage Dida365 tasks and projects via natural language. Use when user wants to create, view, update, complete, or delete tasks, or manage projects in Dida365.
+version: 0.2.0
+description: Manage Dida365 tasks and projects via natural language. Use when user wants to create, view, update, complete, or delete tasks/projects in Dida365.
 ---
 
 # Dida365 Task Manager
@@ -70,38 +71,33 @@ You can also run `dida setup --json` to check everything at once. If all checks 
 3. **Resolve project names** — when the user mentions a project by name (e.g., "work" or "personal"), use `--project <name>` and the CLI will handle fuzzy matching.
 4. **Confirm destructive actions** — for delete operations, always use `--json` flag (which skips interactive confirmation) but confirm with the user BEFORE running the command.
 5. **Handle errors gracefully** — if a command fails, explain the error and suggest next steps.
-6. **Always pass `--project-id`** — when completing, updating, or deleting tasks, first capture `projectId` from a task list, then pass it via `--project-id` to avoid slow full-project scans and API rate limits.
+6. **Always pass `--project-id`** �� when completing, updating, or deleting tasks, first capture `projectId` from a task list, then pass it via `--project-id` to avoid slow full-project scans and API rate limits.
 
-## Command Mapping
+## Command Reference
 
-### Viewing Tasks
+### Task Commands
 
-User intent: "show my tasks", "what do I need to do", "list tasks"
-
-```bash
-# All tasks from active (non-closed) projects
-dida task list --json
-
-# Include tasks from closed/archived projects
-dida task list --all --json
-
-# Tasks in a specific project
-dida task list --project "project name" --json
-```
-
-### Creating Tasks
-
-User intent: "add task", "create task", "remind me to..."
+#### task create — 创建任务
 
 ```bash
-dida task add "task title" --json [options]
+dida task create "task title" --json [options]
 ```
 
-Options to infer from context:
-- `--priority high|medium|low|none` (-p) — infer from urgency words
-- `--due "YYYY-MM-DD"` or `--due "tomorrow"` or `--due "today"` (-d) — infer from time references
-- `--project "project name"` (-P) — infer from project mentions
-- `--content "notes"` (-c) — additional details
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 项目名称或 ID |
+| `--content` | `-c` | 任务内容/备注 |
+| `--desc` | | 描述 |
+| `--tags` | | 标签 (逗号分隔) |
+| `--all-day` | | 全天任务 |
+| `--start-date` | `-s` | 开始日期 (today/tomorrow/YYYY-MM-DD/ISO) |
+| `--due` | `-d` | 截止日期 (today/tomorrow/YYYY-MM-DD/ISO) |
+| `--timezone` | | 时区 (默认 Asia/Shanghai) |
+| `--reminders` | | 提醒 (逗号分隔, 如 TRIGGER:PT0S) |
+| `--repeat` | | 重复规则 (RRULE, 如 RRULE:FREQ=DAILY;INTERVAL=1) |
+| `--priority` | `-p` | 优先级: none/low/medium/high |
+| `--sort-order` | | 排序值 |
+| `--items` | | 子任务 JSON, 如 `[{"title":"子任务1"}]` |
 
 Priority inference guide:
 | User language | Priority |
@@ -111,130 +107,136 @@ Priority inference guide:
 | "when you can", "low priority", "eventually" | low |
 | (no urgency mentioned) | none |
 
-### Completing Tasks
+#### task list — 查看任务列表
 
-User intent: "done", "finished", "complete task"
-
-**Two-step flow (always use this):**
-
-1. First find the task and its `projectId`:
 ```bash
-dida task list --json
-```
-2. From the JSON output, find the matching task's `id` and `projectId`, then:
-```bash
-dida task done <task_id> --project-id <project_id> --json
+dida task list --json [options]
 ```
 
-The `--project-id` flag is critical — without it, the CLI must scan all projects to find the task, which is slow and can hit API rate limits.
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 按项目过滤 |
+| `--all` | | 包含已关闭项目 |
+| `--status` | | 过滤状态: normal/completed |
+| `--priority` | `-p` | 过滤优先级: none/low/medium/high |
+| `--tag` | | 按标签过滤 |
+| `--limit` | `-n` | 限制返回数量 |
 
-If the user already mentioned a specific project:
-1. `dida task list --project "project name" --json`
-2. Find the matching task
-3. `dida task done <id> --project-id <projectId> --json`
+#### task get — 查看任务详情
 
-### Updating Tasks
-
-User intent: "change", "update", "reschedule", "rename"
-
-**Two-step flow:**
-
-1. First find the task:
 ```bash
-dida task list --json
+dida task get <task_id> --project-id <project_id> --json
 ```
-2. Update with `--project-id`:
+
+#### task update — 更新任务
+
 ```bash
 dida task update <task_id> --project-id <project_id> --json [options]
 ```
 
-Options: `--title`, `--priority`, `--due`, `--content`
+Options: same as `task create` plus `--title` (`-t`), minus `--project`.
 
-### Deleting Tasks
+#### task complete — 完成任务
 
-User intent: "delete", "remove task"
-
-**Always confirm with the user before deleting.** Then use two-step flow:
-
-1. First find the task:
 ```bash
-dida task list --json
+dida task complete <task_id> --project-id <project_id> --json
 ```
-2. Delete with `--project-id`:
+
+#### task delete — 删除任务
+
 ```bash
 dida task delete <task_id> --project-id <project_id> --json
 ```
 
-### Batch Creating Tasks
-
-User intent: "add these tasks", "create multiple tasks"
+#### task batch-create — 批量创建
 
 ```bash
-echo '[{"title": "Task 1", "priority": 5}, {"title": "Task 2"}]' | dida task batch-add --json
+echo '[{"title":"Task 1","priority":5},{"title":"Task 2"}]' | dida task batch-create --json
 ```
 
-### Viewing Projects
+### Project Commands
 
-User intent: "show projects", "what projects do I have"
+#### project create — 创建项目
 
 ```bash
-# List all projects
+dida project create "project name" --json [options]
+```
+
+| Option | Description |
+|---|---|
+| `--color` | 颜色 (如 #F18181) |
+| `--view-mode` | 视图模式: list/kanban/timeline |
+| `--kind` | 类型: TASK/NOTE |
+| `--sort-order` | 排序值 |
+
+#### project list — 查看所有项目
+
+```bash
 dida project list --json
-
-# Show a project with its tasks
-dida project show "project name" --json
 ```
+
+#### project get — 查看项目详情及任务
+
+```bash
+dida project get "project name or id" --json
+```
+
+#### project update — 更新项目
+
+```bash
+dida project update <project_id> --json [options]
+```
+
+Options: `--name` (`-n`), `--color`, `--view-mode`, `--kind`, `--sort-order`
+
+#### project delete — 删除项目
+
+```bash
+dida project delete <project_id> --json
+```
+
+## Workflow Patterns
+
+### Two-step flow (for complete/update/delete)
+
+Always list first to get `id` and `projectId`, then operate:
+
+```bash
+# 1. Find the task
+dida task list --json
+
+# 2. Operate with --project-id
+dida task complete <task_id> --project-id <project_id> --json
+```
+
+### Examples
+
+**Natural language task creation:**
+User: "remind me to buy milk tomorrow, high priority"
+```bash
+dida task create "buy milk" --priority high --due tomorrow --json
+```
+
+**Complete a task by description:**
+User: "I finished the report"
+1. `dida task list --json` → find matching task
+2. `dida task complete <id> --project-id <pid> --json`
+
+**Create a project:**
+User: "create a new project called Shopping"
+```bash
+dida project create "Shopping" --json
+```
+
+**Batch create with project:**
+User: "add eggs, bread, cheese to my shopping list"
+1. `dida project list --json` → resolve project ID
+2. `echo '[{"title":"eggs","projectId":"<id>"},...]' | dida task batch-create --json`
 
 ## Response Format
 
 After running a command, present results clearly:
 
 - For task lists: summarize by priority/due date, highlight overdue items
-- For create/update/done: confirm what was done with key details
+- For create/update/complete: confirm what was done with key details
 - For errors: explain in plain language and suggest fixes
-
-## Examples
-
-### Example 1: Natural language task creation
-
-User: "remind me to buy milk tomorrow, high priority"
-
-```bash
-dida task add "buy milk" --priority high --due tomorrow --json
-```
-
-### Example 2: Complete a task by description
-
-User: "I finished the report"
-
-1. First find the task:
-```bash
-dida task list --json
-```
-2. Match "report" in task titles from JSON output, note the `id` and `projectId`
-3. Complete the matched task:
-```bash
-dida task done <matched_task_id> --project-id <project_id> --json
-```
-
-### Example 3: View project tasks
-
-User: "show me my work tasks"
-
-```bash
-dida project show "work" --json
-```
-
-### Example 4: Batch create
-
-User: "add these tasks to my shopping list: eggs, bread, cheese"
-
-```bash
-echo '[{"title":"eggs"},{"title":"bread"},{"title":"cheese"}]' | dida task batch-add --json
-```
-
-If the user specifies a project:
-```bash
-echo '[{"title":"eggs","projectId":"<resolved_id>"},{"title":"bread","projectId":"<resolved_id>"},{"title":"cheese","projectId":"<resolved_id>"}]' | dida task batch-add --json
-```
-(Resolve project ID first via `dida project list --json`)

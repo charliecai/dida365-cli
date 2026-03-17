@@ -120,12 +120,36 @@ class DidaClient:
         data = self._request("GET", "/project")
         return [Project.from_dict(p) for p in data]
 
+    def get_project(self, project_id: str) -> Project:
+        """Get a single project. GET /project/{id}"""
+        data = self._request("GET", f"/project/{project_id}")
+        return Project.from_dict(data)
+
     def get_project_data(self, project_id: str) -> ProjectData:
         """Get project with tasks. GET /project/{id}/data"""
         data = self._request("GET", f"/project/{project_id}/data")
         return ProjectData.from_dict(data)
 
+    def create_project(self, project: Project) -> Project:
+        """Create a new project. POST /project"""
+        data = self._request("POST", "/project", json=project.to_create_dict())
+        return Project.from_dict(data)
+
+    def update_project(self, project_id: str, project: Project) -> Project:
+        """Update an existing project. POST /project/{id}"""
+        data = self._request("POST", f"/project/{project_id}", json=project.to_update_dict())
+        return Project.from_dict(data)
+
+    def delete_project(self, project_id: str) -> None:
+        """Delete a project. DELETE /project/{id}"""
+        self._request("DELETE", f"/project/{project_id}")
+
     # --- Task endpoints ---
+
+    def get_task(self, project_id: str, task_id: str) -> Task:
+        """Get a single task. GET /project/{pid}/task/{tid}"""
+        data = self._request("GET", f"/project/{project_id}/task/{task_id}")
+        return Task.from_dict(data)
 
     def create_task(self, task: Task) -> Task:
         """Create a new task. POST /task"""

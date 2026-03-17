@@ -1,6 +1,6 @@
 # Dida365 CLI & AI Agent Skill
 
-通过 AI Agent 自然语言管理滴答清单 (Dida365) 任务，底层基于 Dida365 Open API v1。
+通过 AI Agent 自然语言管理滴答清单 (Dida365) 任务和项目，底层基于 Dida365 Open API v1。
 
 ## Architecture
 
@@ -81,22 +81,80 @@ Token 存储在 `~/.dida365/token.json`（权限 0600）。
 ### Tasks
 
 ```bash
-dida task add "Buy milk" --priority high --due tomorrow --project "Shopping"
-dida task list                          # All tasks
-dida task list --project "Work"         # By project
+# 创建任务 (支持所有 API 参数)
+dida task create "Buy milk" --priority high --due tomorrow --project "Shopping"
+dida task create "Weekly meeting" --repeat "RRULE:FREQ=WEEKLY;INTERVAL=1" --all-day
+dida task create "Big task" --items '[{"title":"Step 1"},{"title":"Step 2"}]'
+dida task create "Tagged" --tags "work,urgent" --start-date 2026-03-20
+
+# 查看任务
+dida task list                                    # 所有活跃任务
+dida task list --project "Work"                   # 按项目
+dida task list --priority high                    # 按优先级
+dida task list --status completed                 # 已完成任务
+dida task list --tag "urgent" --limit 10          # 按标签，限制数量
+
+# 查看单个任务
+dida task get <task_id> --project-id <project_id>
+
+# 更新任务 (支持所有 API 参数)
 dida task update <task_id> --title "New title" --priority medium
-dida task done <task_id>
-dida task delete <task_id>              # With confirmation
-dida task delete <task_id> --yes        # Skip confirmation
-echo '[{"title":"Task 1"},{"title":"Task 2"}]' | dida task batch-add
+dida task update <task_id> --due 2026-04-01 --tags "updated"
+
+# 完成/删除
+dida task complete <task_id>
+dida task delete <task_id>                        # 带确认
+dida task delete <task_id> --yes                  # 跳过确认
+
+# 批量创建
+echo '[{"title":"Task 1"},{"title":"Task 2"}]' | dida task batch-create
 ```
+
+#### task create / task update 完整参数
+
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 项目名称或 ID (仅 create) |
+| `--title` | `-t` | 标题 (仅 update) |
+| `--content` | `-c` | 任务内容/备注 |
+| `--desc` | | 描述 |
+| `--tags` | | 标签 (逗号分隔) |
+| `--all-day` | | 全天任务 |
+| `--start-date` | `-s` | 开始日期 (today/tomorrow/YYYY-MM-DD/ISO) |
+| `--due` | `-d` | 截止日期 (today/tomorrow/YYYY-MM-DD/ISO) |
+| `--timezone` | | 时区 (默认 Asia/Shanghai) |
+| `--reminders` | | 提醒 (逗号分隔, 如 TRIGGER:PT0S) |
+| `--repeat` | | 重复规则 (RRULE) |
+| `--priority` | `-p` | 优先级: none/low/medium/high |
+| `--sort-order` | | 排序值 |
+| `--items` | | 子任务 JSON |
 
 ### Projects
 
 ```bash
-dida project list                       # List all projects
-dida project show "Work"                # Show project with tasks
+# 创建项目
+dida project create "Shopping" --color "#F18181" --view-mode list
+
+# 查看项目
+dida project list                                 # 所有项目
+dida project get "Work"                           # 项目详情及任务
+
+# 更新项目
+dida project update <project_id> --name "New Name" --color "#4A90D9"
+
+# 删除项目
+dida project delete <project_id>
 ```
+
+#### project create / project update 参数
+
+| Option | Short | Description |
+|---|---|---|
+| `--name` | `-n` | 项目名称 (仅 update) |
+| `--color` | | 颜色 (如 #F18181) |
+| `--view-mode` | | 视图模式: list/kanban/timeline |
+| `--kind` | | 类型: TASK/NOTE |
+| `--sort-order` | | 排序值 |
 
 ### JSON Output
 
@@ -107,15 +165,34 @@ dida task list --json
 # {"success": true, "data": [...]}
 ```
 
+### Version
+
+```bash
+dida --version
+# dida 0.2.0
+```
+
+## Deprecated Commands
+
+以下旧命令仍可使用但已弃用，请迁移到新命令：
+
+| Old | New |
+|---|---|
+| `task add` | `task create` |
+| `task done` | `task complete` |
+| `task batch-add` | `task batch-create` |
+| `project show` | `project get` |
+
 ## AI Agent Skill
 
 安装 Skill 后，支持自然语言操作：
 
 ```
 /dida365 show my work tasks
-/dida365 add "Submit report" due tomorrow, high priority
+/dida365 create "Submit report" due tomorrow, high priority
 /dida365 mark the report task as done
 /dida365 what projects do I have
+/dida365 create a project called "Q2 Goals"
 ```
 
 **Supported agents:** Claude Code, Cursor, Windsurf, 以及任何能执行 shell 命令的 AI Agent。
@@ -134,7 +211,7 @@ uv run pytest tests/ -v          # Run tests
 1. **API Rate Limit** — 100 requests/minute。使用 `--project-id` 可减少 API 调用。
 2. **No Inbox API** — 无直接收件箱接口，`dida task list` 需遍历所有项目。
 3. **API Beta Status** — Dida365 Open API 仍为 Beta。
-4. **No Tag Support** — API 不支持标签管理。
+4. **No Tag Management API** — API 不支持标签的独立管理，但任务可设置标签。
 5. **No Habit Tracking** — API 不支持打卡/习惯功能。
 
 ## FAQ

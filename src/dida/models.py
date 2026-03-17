@@ -77,6 +77,16 @@ class ChecklistItem:
         result: dict = {"title": self.title, "status": self.status}
         if self.id:
             result["id"] = self.id
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
+        if self.start_date:
+            result["startDate"] = self.start_date
+        if self.is_all_day:
+            result["isAllDay"] = self.is_all_day
+        if self.time_zone:
+            result["timeZone"] = self.time_zone
+        if self.completed_time:
+            result["completedTime"] = self.completed_time
         return result
 
 
@@ -89,12 +99,13 @@ class Task:
     title: str = ""
     content: str = ""
     desc: str = ""
+    tags: list[str] = field(default_factory=list)
     all_day: bool = False
     start_date: str | None = None
     due_date: str | None = None
     time_zone: str = "Asia/Shanghai"
     reminders: list[str] = field(default_factory=list)
-    repeat: str = ""
+    repeat_flag: str = ""
     priority: int = 0
     status: int = 0
     completed_time: str | None = None
@@ -112,12 +123,13 @@ class Task:
             title=data.get("title", ""),
             content=data.get("content", ""),
             desc=data.get("desc", ""),
-            all_day=data.get("allDay", False),
+            tags=data.get("tags", []),
+            all_day=data.get("isAllDay", False),
             start_date=data.get("startDate"),
             due_date=data.get("dueDate"),
             time_zone=data.get("timeZone", "Asia/Shanghai"),
             reminders=data.get("reminders", []),
-            repeat=data.get("repeat", ""),
+            repeat_flag=data.get("repeatFlag", ""),
             priority=data.get("priority", 0),
             status=data.get("status", 0),
             completed_time=data.get("completedTime"),
@@ -134,8 +146,10 @@ class Task:
             result["content"] = self.content
         if self.desc:
             result["desc"] = self.desc
+        if self.tags:
+            result["tags"] = self.tags
         if self.all_day:
-            result["allDay"] = self.all_day
+            result["isAllDay"] = self.all_day
         if self.start_date:
             result["startDate"] = self.start_date
         if self.due_date:
@@ -144,10 +158,12 @@ class Task:
             result["timeZone"] = self.time_zone
         if self.reminders:
             result["reminders"] = self.reminders
-        if self.repeat:
-            result["repeat"] = self.repeat
+        if self.repeat_flag:
+            result["repeatFlag"] = self.repeat_flag
         if self.priority:
             result["priority"] = self.priority
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
         if self.items:
             result["items"] = [item.to_dict() for item in self.items]
         return result
@@ -159,12 +175,28 @@ class Task:
             result["title"] = self.title
         if self.content:
             result["content"] = self.content
-        if self.priority is not None:
-            result["priority"] = self.priority
-        if self.due_date:
-            result["dueDate"] = self.due_date
+        if self.desc:
+            result["desc"] = self.desc
+        if self.tags:
+            result["tags"] = self.tags
+        if self.all_day is not None:
+            result["isAllDay"] = self.all_day
         if self.start_date:
             result["startDate"] = self.start_date
+        if self.due_date:
+            result["dueDate"] = self.due_date
+        if self.time_zone:
+            result["timeZone"] = self.time_zone
+        if self.reminders:
+            result["reminders"] = self.reminders
+        if self.repeat_flag:
+            result["repeatFlag"] = self.repeat_flag
+        if self.priority is not None:
+            result["priority"] = self.priority
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
+        if self.items:
+            result["items"] = [item.to_dict() for item in self.items]
         return result
 
     def to_json_dict(self) -> dict:
@@ -178,14 +210,30 @@ class Task:
         }
         if self.content:
             result["content"] = self.content
+        if self.desc:
+            result["desc"] = self.desc
+        if self.tags:
+            result["tags"] = self.tags
+        if self.all_day:
+            result["isAllDay"] = self.all_day
         if self.due_date:
             result["dueDate"] = self.due_date
         if self.start_date:
             result["startDate"] = self.start_date
+        if self.time_zone and self.time_zone != "Asia/Shanghai":
+            result["timeZone"] = self.time_zone
+        if self.reminders:
+            result["reminders"] = self.reminders
+        if self.repeat_flag:
+            result["repeatFlag"] = self.repeat_flag
         if self.completed_time:
             result["completedTime"] = self.completed_time
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
         if self.items:
-            result["items"] = [{"title": item.title, "status": item.status} for item in self.items]
+            result["items"] = [
+                {"id": item.id, "title": item.title, "status": item.status} for item in self.items
+            ]
         return result
 
     @property
@@ -209,6 +257,17 @@ class Task:
         except (ValueError, AttributeError):
             return self.due_date
 
+    @property
+    def start_date_display(self) -> str:
+        """Format start date for display. Returns empty string if no start date."""
+        if not self.start_date:
+            return ""
+        try:
+            dt = datetime.fromisoformat(self.start_date.replace("+0000", "+00:00"))
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except (ValueError, AttributeError):
+            return self.start_date
+
 
 @dataclass
 class Project:
@@ -221,6 +280,7 @@ class Project:
     closed: bool = False
     group_id: str = ""
     view_mode: str | None = None
+    permission: str | None = None
     kind: str | None = None
 
     @classmethod
@@ -234,25 +294,96 @@ class Project:
             closed=data.get("closed", False),
             group_id=data.get("groupId", ""),
             view_mode=data.get("viewMode"),
+            permission=data.get("permission"),
             kind=data.get("kind"),
         )
 
+    def to_create_dict(self) -> dict:
+        """Convert to API request dict for project creation."""
+        result: dict = {"name": self.name}
+        if self.color:
+            result["color"] = self.color
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
+        if self.view_mode:
+            result["viewMode"] = self.view_mode
+        if self.kind:
+            result["kind"] = self.kind
+        return result
+
+    def to_update_dict(self) -> dict:
+        """Convert to API request dict for project update."""
+        result: dict = {}
+        if self.name:
+            result["name"] = self.name
+        if self.color:
+            result["color"] = self.color
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
+        if self.view_mode:
+            result["viewMode"] = self.view_mode
+        if self.kind:
+            result["kind"] = self.kind
+        return result
+
     def to_json_dict(self) -> dict:
         """Convert to JSON-serializable dict for --json output."""
-        return {
+        result = {
             "id": self.id,
             "name": self.name,
-            "color": self.color,
             "closed": self.closed,
+        }
+        if self.color:
+            result["color"] = self.color
+        if self.sort_order:
+            result["sortOrder"] = self.sort_order
+        if self.group_id:
+            result["groupId"] = self.group_id
+        if self.view_mode:
+            result["viewMode"] = self.view_mode
+        if self.permission:
+            result["permission"] = self.permission
+        if self.kind:
+            result["kind"] = self.kind
+        return result
+
+
+@dataclass
+class Column:
+    """A Kanban column within a project."""
+
+    id: str = ""
+    project_id: str = ""
+    name: str = ""
+    sort_order: int = 0
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Column:
+        """Create Column from API response dict."""
+        return cls(
+            id=data.get("id", ""),
+            project_id=data.get("projectId", ""),
+            name=data.get("name", ""),
+            sort_order=data.get("sortOrder", 0),
+        )
+
+    def to_json_dict(self) -> dict:
+        """Convert to JSON-serializable dict."""
+        return {
+            "id": self.id,
+            "projectId": self.project_id,
+            "name": self.name,
+            "sortOrder": self.sort_order,
         }
 
 
 @dataclass
 class ProjectData:
-    """A project with its associated tasks."""
+    """A project with its associated tasks and columns."""
 
     project: Project
     tasks: list[Task] = field(default_factory=list)
+    columns: list[Column] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict) -> ProjectData:
@@ -260,4 +391,6 @@ class ProjectData:
         project = Project.from_dict(data.get("project", data))
         tasks_data = data.get("tasks", [])
         tasks = [Task.from_dict(t) for t in tasks_data]
-        return cls(project=project, tasks=tasks)
+        columns_data = data.get("columns", [])
+        columns = [Column.from_dict(c) for c in columns_data]
+        return cls(project=project, tasks=tasks, columns=columns)

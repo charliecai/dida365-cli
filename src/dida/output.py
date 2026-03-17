@@ -125,3 +125,16 @@ def display_task(task: Task, *, as_json: bool = False, action: str = "已创建"
     due = f" 截止: {task.due_date_display}" if task.due_date_display else ""
     priority_str = f" [{priority_label}优先级]" if task.priority > 0 else ""
     output_success(f"{action}: {task.title}{priority_str}{due}")
+
+
+def display_project(project: Project, *, as_json: bool = False, action: str = "") -> None:
+    """Display a single project result."""
+    if as_json:
+        output_json({"success": True, "data": project.to_json_dict()})
+        return
+
+    suffix = f" ({action})" if action else ""
+    color_str = f" 颜色: {project.color}" if project.color else ""
+    view_str = f" 视图: {project.view_mode}" if project.view_mode else ""
+    kind_str = f" 类型: {project.kind}" if project.kind else ""
+    output_success(f"{project.name}{suffix}{color_str}{view_str}{kind_str}")

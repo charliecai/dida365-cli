@@ -15,8 +15,9 @@ from rich.prompt import Confirm, Prompt
 
 from dida.auth import delete_token, load_token, oauth_login
 from dida.client import ApiError, AuthError, DidaClient
-from dida.models import Task, TaskPriority
+from dida.models import ChecklistItem, Project, Task, TaskPriority, TaskStatus
 from dida.output import (
+    display_project,
     display_project_data,
     display_projects,
     display_task,
@@ -29,13 +30,17 @@ from dida.output import (
 
 app = typer.Typer(
     name="dida",
-    help="滴答清单 (Dida365) CLI 工具",
+    help="滴答清单 (Dida365) CLI 工具 — 管理任务和项目",
     no_args_is_help=True,
 )
 
 auth_app = typer.Typer(help="认证管理", no_args_is_help=True)
-task_app = typer.Typer(help="任务管理", no_args_is_help=True)
-project_app = typer.Typer(help="项目管理", no_args_is_help=True)
+task_app = typer.Typer(
+    help="任务管理 (create/list/get/update/complete/delete)", no_args_is_help=True
+)
+project_app = typer.Typer(
+    help="项目管理 (create/list/get/update/delete)", no_args_is_help=True
+)
 
 app.add_typer(auth_app, name="auth")
 app.add_typer(task_app, name="task")
@@ -45,6 +50,28 @@ console = Console()
 
 # Common options
 JsonOption = Annotated[bool, typer.Option("--json", help="输出 JSON 格式")]
+
+
+def _version_callback(value: bool) -> None:
+    """Print version and exit."""
+    if value:
+        from dida import __version__
+
+        print(f"dida {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version", "-V", help="显示版本号",
+            callback=_version_callback, is_eager=True,
+        ),
+    ] = None,
+) -> None:
+    """滴答清单 (Dida365) CLI 工具。"""
 
 
 def _get_client() -> DidaClient:
@@ -217,47 +244,86 @@ def auth_logout() -> None:
 # ── Task commands ────────────────────────────────────────────────────
 
 
-@task_app.command("add")
-def task_add(
+@task_app.command("create")
+def task_create(
     title: Annotated[str, typer.Argument(help="任务标题")],
-    priority: Annotated[
-        str | None, typer.Option("--priority", "-p", help="优先级: none/low/medium/high")
+    project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
+    content: Annotated[str | None, typer.Option("--content", "-c", help="任务内容/备注")] = None,
+    desc: Annotated[str | None, typer.Option("--desc", help="Checklist 描述")] = None,
+    tags: Annotated[str | None, typer.Option("--tags", help="标签 (逗号分隔)")] = None,
+    all_day: Annotated[bool, typer.Option("--all-day", help="全天任务")] = False,
+    start_date: Annotated[
+        str | None,
+        typer.Option(
+            "--start-date", "-s",
+            help="开始日期 (today/tomorrow/YYYY-MM-DD/ISO)",
+        ),
     ] = None,
     due: Annotated[
         str | None,
-        typer.Option("--due", "-d", help="截止日期 (tomorrow, 2026-03-01, 2026-03-01T15:00)"),
+        typer.Option("--due", "-d", help="截止日期 (today/tomorrow/YYYY-MM-DD/ISO)"),
     ] = None,
-    project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
-    content: Annotated[str | None, typer.Option("--content", "-c", help="任务内容/备注")] = None,
+    timezone: Annotated[
+        str | None, typer.Option("--timezone", help="时区 (默认 Asia/Shanghai)")
+    ] = None,
+    reminders: Annotated[
+        str | None, typer.Option("--reminders", help="提醒 (逗号分隔 TRIGGER, 如 TRIGGER:PT0S)")
+    ] = None,
+    repeat: Annotated[
+        str | None,
+        typer.Option(
+            "--repeat",
+            help="重复规则 (RRULE, 如 RRULE:FREQ=DAILY;INTERVAL=1)",
+        ),
+    ] = None,
+    priority: Annotated[
+        str | None, typer.Option("--priority", "-p", help="优先级: none/low/medium/high")
+    ] = None,
+    sort_order: Annotated[int | None, typer.Option("--sort-order", help="排序值")] = None,
+    items: Annotated[
+        str | None, typer.Option("--items", help='子任务 (JSON, 如 [{"title":"子任务1"}])')
+    ] = None,
     as_json: JsonOption = False,
 ) -> None:
-    """创建新任务。"""
+    """创建新任务。支持所有 Dida365 API 参数。"""
     client = _get_client()
     try:
         task = Task(title=title)
 
-        # Parse priority
         if priority:
             task.priority = TaskPriority.from_str(priority).value
-
-        # Parse due date
         if due:
             task.due_date = _parse_date(due)
-
-        # Resolve project
+        if start_date:
+            task.start_date = _parse_date(start_date)
         if project:
-            project_id = _resolve_project_id(client, project)
-            if project_id:
-                task.project_id = project_id
-
+            pid = _resolve_project_id(client, project)
+            if pid:
+                task.project_id = pid
         if content:
             task.content = content
+        if desc:
+            task.desc = desc
+        if tags:
+            task.tags = [t.strip() for t in tags.split(",")]
+        if all_day:
+            task.all_day = True
+        if timezone:
+            task.time_zone = timezone
+        if reminders:
+            task.reminders = [r.strip() for r in reminders.split(",")]
+        if repeat:
+            task.repeat_flag = repeat
+        if sort_order is not None:
+            task.sort_order = sort_order
+        if items:
+            task.items = [ChecklistItem.from_dict(i) for i in json.loads(items)]
 
         created = client.create_task(task)
         display_task(created, as_json=as_json, action="已创建")
     except (ApiError, AuthError) as e:
         _handle_error(e, as_json=as_json)
-    except ValueError as e:
+    except (ValueError, json.JSONDecodeError) as e:
         if as_json:
             output_error_json(str(e), "VALIDATION_ERROR")
         else:
@@ -267,13 +333,41 @@ def task_add(
         client.close()
 
 
+# Deprecated alias: task add → task create
+@task_app.command("add", hidden=True, deprecated=True)
+def task_add(
+    title: Annotated[str, typer.Argument(help="任务标题")],
+    project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
+    content: Annotated[str | None, typer.Option("--content", "-c", help="任务内容/备注")] = None,
+    priority: Annotated[
+        str | None, typer.Option("--priority", "-p", help="优先级: none/low/medium/high")
+    ] = None,
+    due: Annotated[
+        str | None, typer.Option("--due", "-d", help="截止日期"),
+    ] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """[已弃用] 请使用 task create。"""
+    task_create(
+        title=title, project=project, content=content, priority=priority, due=due, as_json=as_json,
+    )
+
+
 @task_app.command("list")
 def task_list(
     project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
     all_projects: Annotated[bool, typer.Option("--all", help="包含已关闭项目的任务")] = False,
+    status: Annotated[
+        str | None, typer.Option("--status", help="过滤状态: normal/completed")
+    ] = None,
+    priority: Annotated[
+        str | None, typer.Option("--priority", "-p", help="过滤优先级: none/low/medium/high")
+    ] = None,
+    tag: Annotated[str | None, typer.Option("--tag", help="按标签过滤")] = None,
+    limit: Annotated[int | None, typer.Option("--limit", "-n", help="限制返回数量")] = None,
     as_json: JsonOption = False,
 ) -> None:
-    """查看任务列表。"""
+    """查看任务列表。支持按项目、状态、优先级、标签过滤。"""
     client = _get_client()
     try:
         if project:
@@ -287,7 +381,6 @@ def task_list(
             project_data = client.get_project_data(project_id)
             tasks = project_data.tasks
         else:
-            # List tasks from all (or only active) projects
             projects = client.list_projects()
             if not all_projects:
                 projects = [p for p in projects if not p.closed]
@@ -296,9 +389,58 @@ def task_list(
                 pd = client.get_project_data(p.id)
                 tasks.extend(pd.tasks)
 
+        # Apply filters
+        if status:
+            is_completed = status.lower() == "completed"
+            status_val = TaskStatus.COMPLETED if is_completed else TaskStatus.NORMAL
+            tasks = [t for t in tasks if t.status == status_val]
+        if priority:
+            priority_val = TaskPriority.from_str(priority).value
+            tasks = [t for t in tasks if t.priority == priority_val]
+        if tag:
+            tag_lower = tag.lower()
+            tasks = [t for t in tasks if any(tag_lower == tg.lower() for tg in t.tags)]
+
         # Sort: uncompleted first, then by priority desc, then by due date
         tasks.sort(key=lambda t: (t.is_completed, -t.priority, t.due_date or "9999"))
+
+        if limit:
+            tasks = tasks[:limit]
+
         display_tasks(tasks, as_json=as_json)
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    except ValueError as e:
+        if as_json:
+            output_error_json(str(e), "VALIDATION_ERROR")
+        else:
+            output_error(str(e))
+        raise typer.Exit(code=1) from None
+    finally:
+        client.close()
+
+
+@task_app.command("get")
+def task_get(
+    task_id: Annotated[str, typer.Argument(help="任务 ID")],
+    project_id: Annotated[
+        str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
+    ] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """查看单个任务详情。"""
+    client = _get_client()
+    try:
+        pid = project_id or client.find_task_project_id(task_id)
+        if pid is None:
+            if as_json:
+                output_error_json(f"未找到任务: {task_id}", "NOT_FOUND")
+            else:
+                output_error(f"未找到任务: {task_id}")
+            raise typer.Exit(code=1)
+
+        task = client.get_task(pid, task_id)
+        display_task(task, as_json=as_json, action="任务详情")
     except (ApiError, AuthError) as e:
         _handle_error(e, as_json=as_json)
     finally:
@@ -312,17 +454,29 @@ def task_update(
         str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
     ] = None,
     title: Annotated[str | None, typer.Option("--title", "-t", help="新标题")] = None,
+    content: Annotated[str | None, typer.Option("--content", "-c", help="任务内容")] = None,
+    desc: Annotated[str | None, typer.Option("--desc", help="描述")] = None,
+    tags: Annotated[str | None, typer.Option("--tags", help="标签 (逗号分隔)")] = None,
+    all_day: Annotated[bool | None, typer.Option("--all-day/--no-all-day", help="全天任务")] = None,
+    start_date: Annotated[
+        str | None, typer.Option("--start-date", "-s", help="开始日期")
+    ] = None,
+    due: Annotated[str | None, typer.Option("--due", "-d", help="截止日期")] = None,
+    timezone: Annotated[str | None, typer.Option("--timezone", help="时区")] = None,
+    reminders: Annotated[str | None, typer.Option("--reminders", help="提醒 (逗号分隔)")] = None,
+    repeat: Annotated[str | None, typer.Option("--repeat", help="重复规则 (RRULE)")] = None,
     priority: Annotated[
         str | None, typer.Option("--priority", "-p", help="优先级: none/low/medium/high")
     ] = None,
-    due: Annotated[str | None, typer.Option("--due", "-d", help="截止日期")] = None,
-    content: Annotated[str | None, typer.Option("--content", "-c", help="任务内容")] = None,
+    sort_order: Annotated[int | None, typer.Option("--sort-order", help="排序值")] = None,
+    items: Annotated[
+        str | None, typer.Option("--items", help='子任务 (JSON)')
+    ] = None,
     as_json: JsonOption = False,
 ) -> None:
-    """更新任务。"""
+    """更新任务。支持所有 Dida365 API 参数。"""
     client = _get_client()
     try:
-        # Find the task's project ID (skip lookup if provided)
         pid = project_id or client.find_task_project_id(task_id)
         if pid is None:
             if as_json:
@@ -334,18 +488,36 @@ def task_update(
         task = Task(id=task_id, project_id=pid)
         if title:
             task.title = title
-        if priority:
-            task.priority = TaskPriority.from_str(priority).value
-        if due:
-            task.due_date = _parse_date(due)
         if content:
             task.content = content
+        if desc:
+            task.desc = desc
+        if tags:
+            task.tags = [t.strip() for t in tags.split(",")]
+        if all_day is not None:
+            task.all_day = all_day
+        if start_date:
+            task.start_date = _parse_date(start_date)
+        if due:
+            task.due_date = _parse_date(due)
+        if timezone:
+            task.time_zone = timezone
+        if reminders:
+            task.reminders = [r.strip() for r in reminders.split(",")]
+        if repeat:
+            task.repeat_flag = repeat
+        if priority:
+            task.priority = TaskPriority.from_str(priority).value
+        if sort_order is not None:
+            task.sort_order = sort_order
+        if items:
+            task.items = [ChecklistItem.from_dict(i) for i in json.loads(items)]
 
         updated = client.update_task(task)
         display_task(updated, as_json=as_json, action="已更新")
     except (ApiError, AuthError) as e:
         _handle_error(e, as_json=as_json)
-    except ValueError as e:
+    except (ValueError, json.JSONDecodeError) as e:
         if as_json:
             output_error_json(str(e), "VALIDATION_ERROR")
         else:
@@ -355,8 +527,8 @@ def task_update(
         client.close()
 
 
-@task_app.command("done")
-def task_done(
+@task_app.command("complete")
+def task_complete(
     task_id: Annotated[str, typer.Argument(help="任务 ID")],
     project_id: Annotated[
         str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
@@ -383,6 +555,19 @@ def task_done(
         _handle_error(e, as_json=as_json)
     finally:
         client.close()
+
+
+# Deprecated alias: task done → task complete
+@task_app.command("done", hidden=True, deprecated=True)
+def task_done(
+    task_id: Annotated[str, typer.Argument(help="任务 ID")],
+    project_id: Annotated[
+        str | None, typer.Option("--project-id", help="项目 ID (跳过自动查找)")
+    ] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """[已弃用] 请使用 task complete。"""
+    task_complete(task_id=task_id, project_id=project_id, as_json=as_json)
 
 
 @task_app.command("delete")
@@ -421,8 +606,8 @@ def task_delete(
         client.close()
 
 
-@task_app.command("batch-add")
-def task_batch_add(
+@task_app.command("batch-create")
+def task_batch_create(
     as_json: JsonOption = False,
 ) -> None:
     """批量创建任务 (从 stdin 读取 JSON)。
@@ -470,7 +655,50 @@ def task_batch_add(
         client.close()
 
 
+# Deprecated alias: task batch-add → task batch-create
+@task_app.command("batch-add", hidden=True, deprecated=True)
+def task_batch_add(
+    as_json: JsonOption = False,
+) -> None:
+    """[已弃用] 请使用 task batch-create。"""
+    task_batch_create(as_json=as_json)
+
+
 # ── Project commands ─────────────────────────────────────────────────
+
+
+@project_app.command("create")
+def project_create(
+    name: Annotated[str, typer.Argument(help="项目名称")],
+    color: Annotated[str | None, typer.Option("--color", help="颜色 (如 #F18181)")] = None,
+    view_mode: Annotated[
+        str | None, typer.Option("--view-mode", help="视图模式: list/kanban/timeline")
+    ] = None,
+    kind: Annotated[
+        str | None, typer.Option("--kind", help="类型: TASK/NOTE")
+    ] = None,
+    sort_order: Annotated[int | None, typer.Option("--sort-order", help="排序值")] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """创建新项目。"""
+    client = _get_client()
+    try:
+        proj = Project(name=name)
+        if color:
+            proj.color = color
+        if view_mode:
+            proj.view_mode = view_mode
+        if kind:
+            proj.kind = kind
+        if sort_order is not None:
+            proj.sort_order = sort_order
+
+        created = client.create_project(proj)
+        display_project(created, as_json=as_json, action="已创建")
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    finally:
+        client.close()
 
 
 @project_app.command("list")
@@ -488,18 +716,17 @@ def project_list(
         client.close()
 
 
-@project_app.command("show")
-def project_show(
+@project_app.command("get")
+def project_get(
     name_or_id: Annotated[str, typer.Argument(help="项目名称或 ID")],
     as_json: JsonOption = False,
 ) -> None:
     """查看项目详情及任务。"""
     client = _get_client()
     try:
-        # Try as ID first (only if it looks like an ID, not a human name)
+        # Try as ID first
         try:
             project_data = client.get_project_data(name_or_id)
-            # API may return 200 with empty data for invalid IDs — verify
             if project_data.project.id:
                 display_project_data(project_data, as_json=as_json)
                 return
@@ -510,7 +737,6 @@ def project_show(
         matches = client.find_project_by_name(name_or_id)
         if not matches:
             if as_json:
-                # Return all projects so caller can choose
                 projects = client.list_projects()
                 output_json(
                     {
@@ -552,6 +778,75 @@ def project_show(
                 else:
                     output_error("无效的选择")
                     raise typer.Exit(code=1)
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    finally:
+        client.close()
+
+
+# Deprecated alias: project show → project get
+@project_app.command("show", hidden=True, deprecated=True)
+def project_show(
+    name_or_id: Annotated[str, typer.Argument(help="项目名称或 ID")],
+    as_json: JsonOption = False,
+) -> None:
+    """[已弃用] 请使用 project get。"""
+    project_get(name_or_id=name_or_id, as_json=as_json)
+
+
+@project_app.command("update")
+def project_update(
+    project_id: Annotated[str, typer.Argument(help="项目 ID")],
+    name: Annotated[str | None, typer.Option("--name", "-n", help="新名称")] = None,
+    color: Annotated[str | None, typer.Option("--color", help="颜色")] = None,
+    view_mode: Annotated[
+        str | None, typer.Option("--view-mode", help="视图模式: list/kanban/timeline")
+    ] = None,
+    kind: Annotated[str | None, typer.Option("--kind", help="类型: TASK/NOTE")] = None,
+    sort_order: Annotated[int | None, typer.Option("--sort-order", help="排序值")] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """更新项目。"""
+    client = _get_client()
+    try:
+        proj = Project()
+        if name:
+            proj.name = name
+        if color:
+            proj.color = color
+        if view_mode:
+            proj.view_mode = view_mode
+        if kind:
+            proj.kind = kind
+        if sort_order is not None:
+            proj.sort_order = sort_order
+
+        updated = client.update_project(project_id, proj)
+        display_project(updated, as_json=as_json, action="已更新")
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    finally:
+        client.close()
+
+
+@project_app.command("delete")
+def project_delete(
+    project_id: Annotated[str, typer.Argument(help="项目 ID")],
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="跳过确认")] = False,
+    as_json: JsonOption = False,
+) -> None:
+    """删除项目。"""
+    client = _get_client()
+    try:
+        if not as_json and not yes and not Confirm.ask(f"确认删除项目 {project_id}?"):
+            console.print("[dim]已取消[/dim]")
+            raise typer.Exit(code=0)
+
+        client.delete_project(project_id)
+        if as_json:
+            output_json({"success": True, "data": {"id": project_id, "status": "deleted"}})
+        else:
+            output_success(f"已删除项目: {project_id}")
     except (ApiError, AuthError) as e:
         _handle_error(e, as_json=as_json)
     finally:
