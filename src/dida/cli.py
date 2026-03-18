@@ -21,6 +21,7 @@ from dida.output import (
     display_project_data,
     display_projects,
     display_task,
+    display_tasks,
     output_error,
     output_error_json,
     output_json,
@@ -597,6 +598,90 @@ def task_move(
             output_success(f"已移动任务 {task_id} 到项目 {dest_pid}")
     except (ApiError, AuthError) as e:
         _handle_error(e, as_json=as_json)
+    finally:
+        client.close()
+
+
+def _parse_status_list(status_str: str) -> list[int]:
+    """Parse comma-separated status names to API values."""
+    mapping = {"normal": 0, "completed": 2}
+    result = []
+    for s in status_str.split(","):
+        s = s.strip().lower()
+        if s not in mapping:
+            valid = ", ".join(mapping.keys())
+            msg = f"Invalid status '{s}'. Valid values: {valid}"
+            raise ValueError(msg)
+        result.append(mapping[s])
+    return result
+
+
+def _parse_priority_list(priority_str: str) -> list[int]:
+    """Parse comma-separated priority names to API values."""
+    result = []
+    for p in priority_str.split(","):
+        result.append(TaskPriority.from_str(p.strip()).value)
+    return result
+
+
+@task_app.command("filter")
+def task_filter(
+    project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
+    start_date: Annotated[
+        str | None, typer.Option("--start-date", "-s", help="开始日期过滤")
+    ] = None,
+    end_date: Annotated[
+        str | None, typer.Option("--end-date", "-e", help="结束日期过滤")
+    ] = None,
+    priority: Annotated[
+        str | None,
+        typer.Option("--priority", "-p", help="优先级过滤 (逗号分隔: none/low/medium/high)"),
+    ] = None,
+    tag: Annotated[
+        str | None, typer.Option("--tag", help="标签过滤 (逗号分隔, AND 逻辑)")
+    ] = None,
+    status: Annotated[
+        str | None, typer.Option("--status", help="状态过滤 (逗号分隔: normal/completed)")
+    ] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """过滤查询任务。支持按项目、日期、优先级、标签、状态过滤。"""
+    client = _get_client()
+    try:
+        project_ids = None
+        if project:
+            pid = _resolve_project_id(client, project)
+            if pid is None:
+                if as_json:
+                    output_error_json(f"未找到项目: {project}", "NOT_FOUND")
+                else:
+                    output_error(f"未找到项目: {project}")
+                raise typer.Exit(code=1)
+            project_ids = [pid]
+
+        parsed_start = _parse_date(start_date) if start_date else None
+        parsed_end = _parse_date(end_date) if end_date else None
+        parsed_priority = _parse_priority_list(priority) if priority else None
+        parsed_tags = [t.strip() for t in tag.split(",")] if tag else None
+        parsed_status = _parse_status_list(status) if status else None
+
+        tasks = client.filter_tasks(
+            project_ids=project_ids,
+            start_date=parsed_start,
+            end_date=parsed_end,
+            priority=parsed_priority,
+            tags=parsed_tags,
+            status=parsed_status,
+        )
+        display_tasks(tasks, as_json=as_json)
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    except ValueError as e:
+        if as_json:
+            output_error_json(str(e), "VALIDATION_ERROR")
+        else:
+            output_error(str(e))
+        raise typer.Exit(code=1) from None
     finally:
         client.close()
 

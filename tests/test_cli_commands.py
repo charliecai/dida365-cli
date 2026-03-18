@@ -805,3 +805,128 @@ class TestResolveProjectId:
             assert result.exit_code == 0
             call_args = mock_client.create_task.call_args[0][0]
             assert call_args.project_id == "p1"
+
+
+class TestTaskFilter:
+    """Tests for `dida task filter` command."""
+
+    def test_filter_no_params(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.filter_tasks.return_value = [
+                _make_task(id="t1", title="Task 1"),
+            ]
+
+            result = runner.invoke(app, ["task", "filter", "--json"])
+            assert result.exit_code == 0
+            data = json.loads(result.output)
+            assert data["success"] is True
+            assert len(data["data"]) == 1
+
+    def test_filter_by_project(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = [_make_project(id="p1", name="Work")]
+            mock_client.filter_tasks.return_value = [_make_task()]
+
+            result = runner.invoke(app, ["task", "filter", "--project", "Work", "--json"])
+            assert result.exit_code == 0
+            call_kwargs = mock_client.filter_tasks.call_args[1]
+            assert call_kwargs["project_ids"] == ["p1"]
+
+    def test_filter_by_date_range(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.filter_tasks.return_value = []
+
+            result = runner.invoke(
+                app,
+                [
+                    "task", "filter",
+                    "--start-date", "2026-03-01",
+                    "--end-date", "2026-03-31",
+                    "--json",
+                ],
+            )
+            assert result.exit_code == 0
+            call_kwargs = mock_client.filter_tasks.call_args[1]
+            assert call_kwargs["start_date"] is not None
+            assert call_kwargs["end_date"] is not None
+
+    def test_filter_by_priority(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.filter_tasks.return_value = [_make_task(priority=5)]
+
+            result = runner.invoke(app, ["task", "filter", "--priority", "high,medium", "--json"])
+            assert result.exit_code == 0
+            call_kwargs = mock_client.filter_tasks.call_args[1]
+            assert call_kwargs["priority"] == [5, 3]
+
+    def test_filter_by_tag(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.filter_tasks.return_value = []
+
+            result = runner.invoke(app, ["task", "filter", "--tag", "work,urgent", "--json"])
+            assert result.exit_code == 0
+            call_kwargs = mock_client.filter_tasks.call_args[1]
+            assert call_kwargs["tags"] == ["work", "urgent"]
+
+    def test_filter_by_status(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.filter_tasks.return_value = []
+
+            result = runner.invoke(app, ["task", "filter", "--status", "normal", "--json"])
+            assert result.exit_code == 0
+            call_kwargs = mock_client.filter_tasks.call_args[1]
+            assert call_kwargs["status"] == [0]
+
+    def test_filter_combined(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = [_make_project(id="p1", name="Work")]
+            mock_client.filter_tasks.return_value = [_make_task(priority=5)]
+
+            result = runner.invoke(
+                app,
+                [
+                    "task", "filter",
+                    "--project", "Work",
+                    "--priority", "high",
+                    "--status", "normal",
+                    "--json",
+                ],
+            )
+            assert result.exit_code == 0
+            call_kwargs = mock_client.filter_tasks.call_args[1]
+            assert call_kwargs["project_ids"] == ["p1"]
+            assert call_kwargs["priority"] == [5]
+            assert call_kwargs["status"] == [0]
+
+    def test_filter_project_not_found(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = []
+
+            result = runner.invoke(
+                app, ["task", "filter", "--project", "NonExistent", "--json"]
+            )
+            assert result.exit_code == 1
+
+    def test_filter_invalid_priority(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+
+            result = runner.invoke(app, ["task", "filter", "--priority", "urgent", "--json"])
+            assert result.exit_code == 1
