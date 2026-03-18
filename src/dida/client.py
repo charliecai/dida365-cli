@@ -177,6 +177,73 @@ class DidaClient:
             return [Task.from_dict(t) for t in data]
         return []
 
+    def move_task(
+        self,
+        task_id: str,
+        from_project_id: str,
+        to_project_id: str,
+    ) -> list[dict]:
+        """Move a task between projects. POST /task/move"""
+        payload = [
+            {
+                "taskId": task_id,
+                "fromProjectId": from_project_id,
+                "toProjectId": to_project_id,
+            }
+        ]
+        data = self._request("POST", "/task/move", json=payload)
+        return data if isinstance(data, list) else []
+
+    def filter_tasks(
+        self,
+        *,
+        project_ids: list[str] | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        priority: list[int] | None = None,
+        tags: list[str] | None = None,
+        status: list[int] | None = None,
+    ) -> list[Task]:
+        """Filter tasks. POST /task/filter"""
+        payload: dict = {}
+        if project_ids:
+            payload["projectIds"] = project_ids
+        if start_date:
+            payload["startDate"] = start_date
+        if end_date:
+            payload["endDate"] = end_date
+        if priority:
+            # API field is misspelled as "proiority"
+            payload["proiority"] = priority
+        if tags:
+            payload["tag"] = tags
+        if status:
+            payload["status"] = status
+        data = self._request("POST", "/task/filter", json=payload)
+        if isinstance(data, list):
+            return [Task.from_dict(t) for t in data]
+        return []
+
+    def list_completed_tasks(
+        self,
+        *,
+        project_ids: list[str] | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[Task]:
+        """List completed tasks. POST /task/completed"""
+        payload: dict = {}
+        if project_ids:
+            payload["projectIds"] = project_ids
+        if start_date:
+            payload["startDate"] = start_date
+        if end_date:
+            payload["endDate"] = end_date
+        data = self._request("POST", "/task/completed", json=payload)
+        if isinstance(data, list):
+            return [Task.from_dict(t) for t in data]
+        return []
+
     # --- Helper methods ---
 
     def find_project_by_name(self, name: str) -> list[Project]:

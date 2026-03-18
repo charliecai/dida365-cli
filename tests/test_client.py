@@ -271,3 +271,60 @@ class TestDidaClient:
         )
         result = client.find_task_project_id("nonexistent")
         assert result is None
+
+    @respx.mock
+    def test_move_task(self, client: DidaClient) -> None:
+        respx.post("https://api.dida365.com/open/v1/task/move").mock(
+            return_value=httpx.Response(
+                200,
+                json=[{"taskId": "t1", "etag": "abc123"}],
+            )
+        )
+        result = client.move_task("t1", "p_from", "p_to")
+        assert result == [{"taskId": "t1", "etag": "abc123"}]
+
+    @respx.mock
+    def test_filter_tasks(self, client: DidaClient) -> None:
+        respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(
+                200,
+                json=[
+                    {"id": "t1", "title": "Task 1", "projectId": "p1"},
+                    {"id": "t2", "title": "Task 2", "projectId": "p1"},
+                ],
+            )
+        )
+        tasks = client.filter_tasks(project_ids=["p1"], priority=[5])
+        assert len(tasks) == 2
+        assert tasks[0].title == "Task 1"
+
+    @respx.mock
+    def test_filter_tasks_empty(self, client: DidaClient) -> None:
+        respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        tasks = client.filter_tasks()
+        assert tasks == []
+
+    @respx.mock
+    def test_list_completed_tasks(self, client: DidaClient) -> None:
+        respx.post("https://api.dida365.com/open/v1/task/completed").mock(
+            return_value=httpx.Response(
+                200,
+                json=[
+                    {"id": "t3", "title": "Done task", "status": 2, "projectId": "p1",
+                     "completedTime": "2026-03-15T10:00:00+0000"},
+                ],
+            )
+        )
+        tasks = client.list_completed_tasks(project_ids=["p1"])
+        assert len(tasks) == 1
+        assert tasks[0].status == 2
+
+    @respx.mock
+    def test_list_completed_tasks_empty(self, client: DidaClient) -> None:
+        respx.post("https://api.dida365.com/open/v1/task/completed").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        tasks = client.list_completed_tasks()
+        assert tasks == []
