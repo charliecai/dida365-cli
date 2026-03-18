@@ -538,6 +538,69 @@ def task_delete(
         client.close()
 
 
+@task_app.command("move")
+def task_move(
+    task_id: Annotated[str, typer.Argument(help="任务 ID")],
+    to: Annotated[str | None, typer.Option("--to", "-T", help="目标项目名称或 ID")] = None,
+    from_project: Annotated[
+        str | None, typer.Option("--from", "-F", help="源项目名称或 ID")
+    ] = None,
+    project_id: Annotated[
+        str | None, typer.Option("--project-id", help="源项目 ID (跳过自动查找)")
+    ] = None,
+    to_project_id: Annotated[
+        str | None, typer.Option("--to-project-id", help="目标项目 ID (跳过模糊匹配)")
+    ] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """移动任务到另一个项目。"""
+    client = _get_client()
+    try:
+        # Resolve destination
+        dest_pid = to_project_id
+        if not dest_pid:
+            if not to:
+                msg = "必须提供 --to 或 --to-project-id"
+                if as_json:
+                    output_error_json(msg, "VALIDATION_ERROR")
+                else:
+                    output_error(msg)
+                raise typer.Exit(code=1)
+            dest_pid = _resolve_project_id(client, to)
+            if not dest_pid:
+                msg = f"未找到目标项目: {to}"
+                if as_json:
+                    output_error_json(msg, "NOT_FOUND")
+                else:
+                    output_error(msg)
+                raise typer.Exit(code=1)
+
+        # Resolve source
+        src_pid = project_id
+        if not src_pid:
+            if from_project:
+                src_pid = _resolve_project_id(client, from_project)
+            else:
+                src_pid = client.find_task_project_id(task_id)
+        if not src_pid:
+            msg = f"未找到任务所在项目: {task_id}"
+            if as_json:
+                output_error_json(msg, "NOT_FOUND")
+            else:
+                output_error(msg)
+            raise typer.Exit(code=1)
+
+        result = client.move_task(task_id, src_pid, dest_pid)
+        if as_json:
+            output_json({"success": True, "data": result})
+        else:
+            output_success(f"已移动任务 {task_id} 到项目 {dest_pid}")
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    finally:
+        client.close()
+
+
 @task_app.command("batch-create")
 def task_batch_create(
     as_json: JsonOption = False,

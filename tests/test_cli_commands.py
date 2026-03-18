@@ -345,6 +345,92 @@ class TestTaskDelete:
             assert result.exit_code == 1
 
 
+class TestTaskMove:
+    """Tests for `dida task move` command."""
+
+    def test_move_with_project_ids(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.move_task.return_value = [{"taskId": "t1", "etag": "abc"}]
+
+            result = runner.invoke(
+                app,
+                ["task", "move", "t1", "--project-id", "p1", "--to-project-id", "p2", "--json"],
+            )
+            assert result.exit_code == 0
+            data = json.loads(result.output)
+            assert data["success"] is True
+            mock_client.move_task.assert_called_once_with("t1", "p1", "p2")
+
+    def test_move_with_name_resolution(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = [
+                _make_project(id="p1", name="Work"),
+                _make_project(id="p2", name="Personal"),
+            ]
+            mock_client.find_task_project_id.return_value = "p1"
+            mock_client.move_task.return_value = [{"taskId": "t1", "etag": "abc"}]
+
+            result = runner.invoke(
+                app, ["task", "move", "t1", "--to", "Personal", "--json"]
+            )
+            assert result.exit_code == 0
+            mock_client.move_task.assert_called_once_with("t1", "p1", "p2")
+
+    def test_move_with_from_name(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = [
+                _make_project(id="p1", name="Work"),
+                _make_project(id="p2", name="Personal"),
+            ]
+            mock_client.move_task.return_value = [{"taskId": "t1", "etag": "abc"}]
+
+            result = runner.invoke(
+                app, ["task", "move", "t1", "--from", "Work", "--to", "Personal", "--json"]
+            )
+            assert result.exit_code == 0
+            mock_client.move_task.assert_called_once_with("t1", "p1", "p2")
+
+    def test_move_missing_to(self):
+        """Error when neither --to nor --to-project-id is provided."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+
+            result = runner.invoke(app, ["task", "move", "t1", "--json"])
+            assert result.exit_code == 1
+
+    def test_move_to_project_not_found(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = []
+
+            result = runner.invoke(
+                app, ["task", "move", "t1", "--to", "NonExistent", "--json"]
+            )
+            assert result.exit_code == 1
+
+    def test_move_source_not_found(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = [
+                _make_project(id="p2", name="Personal"),
+            ]
+            mock_client.find_task_project_id.return_value = None
+
+            result = runner.invoke(
+                app, ["task", "move", "t1", "--to", "Personal", "--json"]
+            )
+            assert result.exit_code == 1
+
+
 class TestTaskBatchCreate:
     """Tests for `dida task batch-create` command."""
 
