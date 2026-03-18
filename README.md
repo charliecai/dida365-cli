@@ -87,12 +87,22 @@ dida task create "Weekly meeting" --repeat "RRULE:FREQ=WEEKLY;INTERVAL=1" --all-
 dida task create "Big task" --items '[{"title":"Step 1"},{"title":"Step 2"}]'
 dida task create "Tagged" --tags "work,urgent" --start-date 2026-03-20
 
-# 查看任务
-dida task list                                    # 所有活跃任务
-dida task list --project "Work"                   # 按项目
-dida task list --priority high                    # 按优先级
-dida task list --status completed                 # 已完成任务
-dida task list --tag "urgent" --limit 10          # 按标签，限制数量
+# 过滤查询任务
+dida task filter                                  # 所有任务
+dida task filter --project "Work"                 # 按项目
+dida task filter --priority high                  # 按优先级
+dida task filter --status normal                  # 未完成任务
+dida task filter --tag "urgent"                   # 按标签
+dida task filter --start-date 2026-03-01 --end-date 2026-03-31
+
+# 查看已完成任务
+dida task completed                               # 所有已完成
+dida task completed --project "Work"              # 按项目
+dida task completed --start-date 2026-03-01       # 按完成时间
+
+# 移动任务到另一个项目
+dida task move <task_id> --to "Personal"
+dida task move <task_id> --from "Work" --to "Personal"
 
 # 查看单个任务
 dida task get <task_id> --project-id <project_id>
@@ -128,6 +138,34 @@ echo '[{"title":"Task 1"},{"title":"Task 2"}]' | dida task batch-create
 | `--priority` | `-p` | 优先级: none/low/medium/high |
 | `--sort-order` | | 排序值 |
 | `--items` | | 子任务 JSON |
+
+#### task filter 参数
+
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 项目名称或 ID |
+| `--start-date` | `-s` | 开始日期过滤 |
+| `--end-date` | `-e` | 结束日期过滤 |
+| `--priority` | `-p` | 优先级 (逗号分隔: none/low/medium/high) |
+| `--tag` | | 标签 (逗号分隔, AND 逻辑) |
+| `--status` | | 状态 (逗号分隔: normal/completed) |
+
+#### task completed 参数
+
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 项目名称或 ID |
+| `--start-date` | `-s` | 完成时间起始 |
+| `--end-date` | `-e` | 完成时间结束 |
+
+#### task move 参数
+
+| Option | Short | Description |
+|---|---|---|
+| `--to` | `-T` | 目标项目名称或 ID (必填) |
+| `--from` | `-F` | 源项目名称或 ID |
+| `--project-id` | | 源项目 ID (跳过自动查找) |
+| `--to-project-id` | | 目标项目 ID (跳过模糊匹配) |
 
 ### Projects
 
@@ -169,7 +207,7 @@ dida task list --json
 
 ```bash
 dida --version
-# dida 0.2.0
+# dida 0.3.0
 ```
 
 ## Deprecated Commands
@@ -182,6 +220,7 @@ dida --version
 | `task done` | `task complete` |
 | `task batch-add` | `task batch-create` |
 | `project show` | `project get` |
+| `task list` | `task filter` |
 
 ## AI Agent Skill
 
@@ -209,10 +248,9 @@ uv run pytest tests/ -v          # Run tests
 ## Known Limitations
 
 1. **API Rate Limit** — 100 requests/minute。使用 `--project-id` 可减少 API 调用。
-2. **No Inbox API** — 无直接收件箱接口，`dida task list` 需遍历所有项目。
-3. **API Beta Status** — Dida365 Open API 仍为 Beta。
-4. **No Tag Management API** — API 不支持标签的独立管理，但任务可设置标签。
-5. **No Habit Tracking** — API 不支持打卡/习惯功能。
+2. **API Beta Status** — Dida365 Open API 仍为 Beta。
+3. **No Tag Management API** — API 不支持标签的独立管理，但任务可设置标签。
+4. **No Habit Tracking** — API 不支持打卡/习惯功能。
 
 ## FAQ
 

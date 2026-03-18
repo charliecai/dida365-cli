@@ -28,14 +28,41 @@ Create a new task.
 | `--content` | `-c` | Task notes/content | `--content "details"` |
 | `--json` | | Output JSON format | |
 
-### dida task list
+### dida task move \<task_id\>
 
-List tasks.
+Move a task to another project.
+
+| Option | Short | Description | Example |
+|---|---|---|---|
+| `--to` | `-T` | Destination project name or ID | `--to "Personal"` |
+| `--from` | `-F` | Source project name or ID | `--from "Work"` |
+| `--project-id` | | Source project ID (skip auto-lookup) | |
+| `--to-project-id` | | Destination project ID (skip fuzzy match) | |
+| `--json` | | Output JSON format | |
+
+### dida task filter
+
+Filter and query tasks with advanced criteria.
 
 | Option | Short | Description |
 |---|---|---|
 | `--project` | `-P` | Filter by project name or ID |
-| `--all` | | Include tasks from closed projects |
+| `--start-date` | `-s` | Filter by start date |
+| `--end-date` | `-e` | Filter by end date |
+| `--priority` | `-p` | Filter by priority (comma-separated: none/low/medium/high) |
+| `--tag` | | Filter by tags (comma-separated, AND logic) |
+| `--status` | | Filter by status (comma-separated: normal/completed) |
+| `--json` | | Output JSON format |
+
+### dida task completed
+
+List completed tasks within a time range.
+
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | Filter by project name or ID |
+| `--start-date` | `-s` | Completed time range start |
+| `--end-date` | `-e` | Completed time range end |
 | `--json` | | Output JSON format |
 
 ### dida task update \<task_id\>

@@ -1,6 +1,6 @@
 ---
 name: dida365
-version: 0.2.0
+version: 0.3.0
 description: Manage Dida365 tasks and projects via natural language. Use when user wants to create, view, update, complete, or delete tasks/projects in Dida365.
 ---
 
@@ -107,20 +107,45 @@ Priority inference guide:
 | "when you can", "low priority", "eventually" | low |
 | (no urgency mentioned) | none |
 
-#### task list — 查看任务列表
+#### task move — 移动任务
 
 ```bash
-dida task list --json [options]
+dida task move <task_id> --to <project> --json [options]
 ```
 
 | Option | Short | Description |
 |---|---|---|
-| `--project` | `-P` | 按项目过滤 |
-| `--all` | | 包含已关闭项目 |
-| `--status` | | 过滤状态: normal/completed |
-| `--priority` | `-p` | 过滤优先级: none/low/medium/high |
-| `--tag` | | 按标签过滤 |
-| `--limit` | `-n` | 限制返回数量 |
+| `--to` | `-T` | 目标项目名称或 ID (必填) |
+| `--from` | `-F` | 源项目名称或 ID |
+| `--project-id` | | 源项目 ID (跳过自动查找) |
+| `--to-project-id` | | 目标项目 ID (跳过模糊匹配) |
+
+#### task filter — 过滤查询任务
+
+```bash
+dida task filter --json [options]
+```
+
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 项目名称或 ID |
+| `--start-date` | `-s` | 开始日期过滤 |
+| `--end-date` | `-e` | 结束日期过滤 |
+| `--priority` | `-p` | 优先级 (逗号分隔: none/low/medium/high) |
+| `--tag` | | 标签 (逗号分隔, AND 逻辑) |
+| `--status` | | 状态 (逗号分隔: normal/completed) |
+
+#### task completed — 查看已完成任务
+
+```bash
+dida task completed --json [options]
+```
+
+| Option | Short | Description |
+|---|---|---|
+| `--project` | `-P` | 项目名称或 ID |
+| `--start-date` | `-s` | 完成时间起始 |
+| `--end-date` | `-e` | 完成时间结束 |
 
 #### task get — 查看任务详情
 
@@ -203,7 +228,7 @@ Always list first to get `id` and `projectId`, then operate:
 
 ```bash
 # 1. Find the task
-dida task list --json
+dida task filter --json
 
 # 2. Operate with --project-id
 dida task complete <task_id> --project-id <project_id> --json
