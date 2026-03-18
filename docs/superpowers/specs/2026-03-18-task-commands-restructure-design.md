@@ -43,6 +43,8 @@ dida task move <task_id> --to <project_name_or_id> [options] [--json]
 **Resolution logic:**
 1. If `--project-id` provided, use as `fromProjectId`; else if `--from` provided, resolve via fuzzy match; else auto-detect via `find_task_project_id()`
 2. If `--to-project-id` provided, use as `toProjectId`; else resolve `--to` via fuzzy match
+3. Error if neither `--to` nor `--to-project-id` is provided
+4. `--project-id` exists for consistency with other commands (task update/delete/complete) — allows agents to skip auto-lookup when project ID is already known
 
 ### 3. New Command: `dida task filter`
 
@@ -59,11 +61,16 @@ dida task filter [options] [--json]
 | `--start-date` | `-s` | Filter tasks where startDate ≥ value | date |
 | `--end-date` | `-e` | Filter tasks where startDate ≤ value | date |
 | `--priority` | `-p` | Priority levels, comma-separated (none/low/medium/high) | list |
-| `--tag` | | Tags, comma-separated (AND logic) | list |
+| `--tag` | | Tags, comma-separated (AND logic per API: "contain all of the specified tags") | list |
 | `--status` | | Status codes, comma-separated (normal/completed) | list |
 
 **API request body:** `{projectIds?, startDate?, endDate?, proiority?, tag?, status?}`
 Note: API field is misspelled as `proiority` — we must send it as-is.
+
+**Priority value mapping (CLI → API):** none=0, low=1, medium=3, high=5 (same as existing commands).
+**Status value mapping (CLI → API):** normal=[0], completed=[2].
+
+**Note:** `task filter --status completed` overlaps with `task completed` — this is intentional. `task completed` filters by `completedTime` range while `task filter` filters by task `startDate` range.
 
 **Client method:** `filter_tasks(project_ids=None, start_date=None, end_date=None, priority=None, tags=None, status=None) -> list[Task]`
 
@@ -126,5 +133,5 @@ After all code changes:
 | `tests/test_client.py` | Add client method tests |
 | `README.md` | Update task section, examples, limitations |
 | `skill/dida365/SKILL.md` | Update command reference, bump version |
-| `skill/dida365/references/api-ref.md` | Update command reference |
+| `skill/dida365/references/api-ref.md` | Remove `task list` section, add `task move`/`task filter`/`task completed` with full option tables matching the format of existing commands |
 | `pyproject.toml` | Bump version to 0.3.0 |
