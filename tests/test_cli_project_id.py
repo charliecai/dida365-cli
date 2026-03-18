@@ -121,48 +121,6 @@ class TestTaskUpdateProjectId:
             mock_client.find_task_project_id.assert_not_called()
 
 
-class TestTaskListActiveOnly:
-    """Test that task list defaults to active projects only."""
-
-    def test_list_skips_closed_projects(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-
-            from dida.models import Project, ProjectData
-
-            active_project = Project(id="active1", name="Active", closed=False)
-            closed_project = Project(id="closed1", name="Closed", closed=True)
-            mock_client.list_projects.return_value = [active_project, closed_project]
-            mock_client.get_project_data.return_value = ProjectData(
-                project=active_project, tasks=[]
-            )
-
-            runner.invoke(app, ["task", "list", "--json"])
-
-            # Should only query the active project, not the closed one
-            mock_client.get_project_data.assert_called_once_with("active1")
-
-    def test_list_all_includes_closed_projects(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-
-            from dida.models import Project, ProjectData
-
-            active_project = Project(id="active1", name="Active", closed=False)
-            closed_project = Project(id="closed1", name="Closed", closed=True)
-            mock_client.list_projects.return_value = [active_project, closed_project]
-            mock_client.get_project_data.return_value = ProjectData(
-                project=active_project, tasks=[]
-            )
-
-            runner.invoke(app, ["task", "list", "--all", "--json"])
-
-            # Should query both projects
-            assert mock_client.get_project_data.call_count == 2
-
-
 class TestErrorOutput:
     """Test that error JSON is output exactly once."""
 

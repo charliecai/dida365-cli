@@ -15,13 +15,12 @@ from rich.prompt import Confirm, Prompt
 
 from dida.auth import delete_token, load_token, oauth_login
 from dida.client import ApiError, AuthError, DidaClient
-from dida.models import ChecklistItem, Project, Task, TaskPriority, TaskStatus
+from dida.models import ChecklistItem, Project, Task, TaskPriority
 from dida.output import (
     display_project,
     display_project_data,
     display_projects,
     display_task,
-    display_tasks,
     output_error,
     output_error_json,
     output_json,
@@ -36,7 +35,7 @@ app = typer.Typer(
 
 auth_app = typer.Typer(help="认证管理", no_args_is_help=True)
 task_app = typer.Typer(
-    help="任务管理 (create/list/get/update/complete/delete)", no_args_is_help=True
+    help="任务管理 (create/get/update/complete/delete/move/filter/completed)", no_args_is_help=True
 )
 project_app = typer.Typer(
     help="项目管理 (create/list/get/update/delete)", no_args_is_help=True
@@ -351,73 +350,6 @@ def task_add(
     task_create(
         title=title, project=project, content=content, priority=priority, due=due, as_json=as_json,
     )
-
-
-@task_app.command("list")
-def task_list(
-    project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
-    all_projects: Annotated[bool, typer.Option("--all", help="包含已关闭项目的任务")] = False,
-    status: Annotated[
-        str | None, typer.Option("--status", help="过滤状态: normal/completed")
-    ] = None,
-    priority: Annotated[
-        str | None, typer.Option("--priority", "-p", help="过滤优先级: none/low/medium/high")
-    ] = None,
-    tag: Annotated[str | None, typer.Option("--tag", help="按标签过滤")] = None,
-    limit: Annotated[int | None, typer.Option("--limit", "-n", help="限制返回数量")] = None,
-    as_json: JsonOption = False,
-) -> None:
-    """查看任务列表。支持按项目、状态、优先级、标签过滤。"""
-    client = _get_client()
-    try:
-        if project:
-            project_id = _resolve_project_id(client, project)
-            if project_id is None:
-                if as_json:
-                    output_error_json(f"未找到项目: {project}", "NOT_FOUND")
-                else:
-                    output_error(f"未找到项目: {project}")
-                raise typer.Exit(code=1)
-            project_data = client.get_project_data(project_id)
-            tasks = project_data.tasks
-        else:
-            projects = client.list_projects()
-            if not all_projects:
-                projects = [p for p in projects if not p.closed]
-            tasks = []
-            for p in projects:
-                pd = client.get_project_data(p.id)
-                tasks.extend(pd.tasks)
-
-        # Apply filters
-        if status:
-            is_completed = status.lower() == "completed"
-            status_val = TaskStatus.COMPLETED if is_completed else TaskStatus.NORMAL
-            tasks = [t for t in tasks if t.status == status_val]
-        if priority:
-            priority_val = TaskPriority.from_str(priority).value
-            tasks = [t for t in tasks if t.priority == priority_val]
-        if tag:
-            tag_lower = tag.lower()
-            tasks = [t for t in tasks if any(tag_lower == tg.lower() for tg in t.tags)]
-
-        # Sort: uncompleted first, then by priority desc, then by due date
-        tasks.sort(key=lambda t: (t.is_completed, -t.priority, t.due_date or "9999"))
-
-        if limit:
-            tasks = tasks[:limit]
-
-        display_tasks(tasks, as_json=as_json)
-    except (ApiError, AuthError) as e:
-        _handle_error(e, as_json=as_json)
-    except ValueError as e:
-        if as_json:
-            output_error_json(str(e), "VALIDATION_ERROR")
-        else:
-            output_error(str(e))
-        raise typer.Exit(code=1) from None
-    finally:
-        client.close()
 
 
 @task_app.command("get")

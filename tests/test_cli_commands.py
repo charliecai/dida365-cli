@@ -169,132 +169,6 @@ class TestTaskCreate:
             assert result.exit_code == 1
 
 
-class TestTaskList:
-    """Tests for `dida task list` command."""
-
-    def _setup_tasks(self, mock_client):
-        """Set up mock client with sample tasks across projects."""
-        proj = _make_project()
-        mock_client.list_projects.return_value = [proj]
-        tasks = [
-            _make_task(id="t1", title="High task", priority=5, status=0, tags=["work"]),
-            _make_task(id="t2", title="Low task", priority=1, status=0, tags=["personal"]),
-            _make_task(id="t3", title="Done task", priority=0, status=2, tags=["work"]),
-        ]
-        mock_client.get_project_data.return_value = ProjectData(
-            project=proj, tasks=tasks
-        )
-
-    def test_list_all_tasks(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(app, ["task", "list", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert data["success"] is True
-            assert len(data["data"]) == 3
-
-    def test_list_filter_by_status_completed(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(app, ["task", "list", "--status", "completed", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert len(data["data"]) == 1
-            assert data["data"][0]["status"] == 2
-
-    def test_list_filter_by_status_normal(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(app, ["task", "list", "--status", "normal", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert len(data["data"]) == 2
-
-    def test_list_filter_by_priority(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(app, ["task", "list", "--priority", "high", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert len(data["data"]) == 1
-            assert data["data"][0]["priority"] == 5
-
-    def test_list_filter_by_tag(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(app, ["task", "list", "--tag", "work", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert len(data["data"]) == 2  # t1 and t3
-
-    def test_list_with_limit(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(app, ["task", "list", "--limit", "1", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert len(data["data"]) == 1
-
-    def test_list_by_project(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            mock_client.list_projects.return_value = [_make_project()]
-            mock_client.get_project_data.return_value = ProjectData(
-                project=_make_project(), tasks=[_make_task()]
-            )
-
-            result = runner.invoke(app, ["task", "list", "--project", "Work", "--json"])
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert data["success"] is True
-
-    def test_list_project_not_found(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            mock_client.list_projects.return_value = []
-
-            result = runner.invoke(
-                app, ["task", "list", "--project", "NonExistent", "--json"]
-            )
-            assert result.exit_code == 1
-
-    def test_list_combined_filters(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            self._setup_tasks(mock_client)
-
-            result = runner.invoke(
-                app,
-                ["task", "list", "--status", "normal", "--priority", "high", "--json"],
-            )
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert len(data["data"]) == 1
-            assert data["data"][0]["title"] == "High task"
-
-
 class TestTaskGet:
     """Tests for `dida task get` command."""
 
@@ -783,7 +657,7 @@ class TestErrorHandling:
             from dida.client import AuthError
             mock_client.list_projects.side_effect = AuthError()
 
-            result = runner.invoke(app, ["task", "list", "--json"])
+            result = runner.invoke(app, ["project", "list", "--json"])
             assert result.exit_code == 2
             data = json.loads(result.output)
             assert data["code"] == "AUTH_ERROR"
@@ -795,7 +669,7 @@ class TestErrorHandling:
             from dida.client import ApiError
             mock_client.list_projects.side_effect = ApiError("server error", status_code=500)
 
-            result = runner.invoke(app, ["task", "list", "--json"])
+            result = runner.invoke(app, ["project", "list", "--json"])
             assert result.exit_code == 1
             data = json.loads(result.output)
             assert data["code"] == "API_ERROR"
