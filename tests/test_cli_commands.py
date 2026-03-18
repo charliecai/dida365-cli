@@ -930,3 +930,66 @@ class TestTaskFilter:
 
             result = runner.invoke(app, ["task", "filter", "--priority", "urgent", "--json"])
             assert result.exit_code == 1
+
+
+class TestTaskCompleted:
+    """Tests for `dida task completed` command."""
+
+    def test_completed_no_params(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_completed_tasks.return_value = [
+                _make_task(id="t1", title="Done", status=2),
+            ]
+
+            result = runner.invoke(app, ["task", "completed", "--json"])
+            assert result.exit_code == 0
+            data = json.loads(result.output)
+            assert data["success"] is True
+            assert len(data["data"]) == 1
+
+    def test_completed_by_project(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = [_make_project(id="p1", name="Work")]
+            mock_client.list_completed_tasks.return_value = [_make_task(status=2)]
+
+            result = runner.invoke(
+                app, ["task", "completed", "--project", "Work", "--json"]
+            )
+            assert result.exit_code == 0
+            call_kwargs = mock_client.list_completed_tasks.call_args[1]
+            assert call_kwargs["project_ids"] == ["p1"]
+
+    def test_completed_by_date_range(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_completed_tasks.return_value = []
+
+            result = runner.invoke(
+                app,
+                [
+                    "task", "completed",
+                    "--start-date", "2026-03-01",
+                    "--end-date", "2026-03-31",
+                    "--json",
+                ],
+            )
+            assert result.exit_code == 0
+            call_kwargs = mock_client.list_completed_tasks.call_args[1]
+            assert call_kwargs["start_date"] is not None
+            assert call_kwargs["end_date"] is not None
+
+    def test_completed_project_not_found(self):
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            mock_client.list_projects.return_value = []
+
+            result = runner.invoke(
+                app, ["task", "completed", "--project", "NonExistent", "--json"]
+            )
+            assert result.exit_code == 1

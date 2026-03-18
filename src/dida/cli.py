@@ -686,6 +686,52 @@ def task_filter(
         client.close()
 
 
+@task_app.command("completed")
+def task_completed(
+    project: Annotated[str | None, typer.Option("--project", "-P", help="项目名称或 ID")] = None,
+    start_date: Annotated[
+        str | None, typer.Option("--start-date", "-s", help="完成时间起始")
+    ] = None,
+    end_date: Annotated[
+        str | None, typer.Option("--end-date", "-e", help="完成时间结束")
+    ] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """查看已完成任务。按完成时间范围过滤。"""
+    client = _get_client()
+    try:
+        project_ids = None
+        if project:
+            pid = _resolve_project_id(client, project)
+            if pid is None:
+                if as_json:
+                    output_error_json(f"未找到项目: {project}", "NOT_FOUND")
+                else:
+                    output_error(f"未找到项目: {project}")
+                raise typer.Exit(code=1)
+            project_ids = [pid]
+
+        parsed_start = _parse_date(start_date) if start_date else None
+        parsed_end = _parse_date(end_date) if end_date else None
+
+        tasks = client.list_completed_tasks(
+            project_ids=project_ids,
+            start_date=parsed_start,
+            end_date=parsed_end,
+        )
+        display_tasks(tasks, as_json=as_json)
+    except (ApiError, AuthError) as e:
+        _handle_error(e, as_json=as_json)
+    except ValueError as e:
+        if as_json:
+            output_error_json(str(e), "VALIDATION_ERROR")
+        else:
+            output_error(str(e))
+        raise typer.Exit(code=1) from None
+    finally:
+        client.close()
+
+
 @task_app.command("batch-create")
 def task_batch_create(
     as_json: JsonOption = False,
