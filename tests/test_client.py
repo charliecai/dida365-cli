@@ -328,3 +328,162 @@ class TestDidaClient:
         )
         tasks = client.list_completed_tasks()
         assert tasks == []
+
+    # --- New method edge cases and payload verification ---
+
+    @respx.mock
+    def test_move_task_non_list_response(self, client: DidaClient) -> None:
+        """move_task returns [] when API response is not a list."""
+        respx.post("https://api.dida365.com/open/v1/task/move").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        result = client.move_task("t1", "p_from", "p_to")
+        assert result == []
+
+    @respx.mock
+    def test_move_task_payload_structure(self, client: DidaClient) -> None:
+        """Verify the exact payload sent to the API for move_task."""
+        route = respx.post("https://api.dida365.com/open/v1/task/move").mock(
+            return_value=httpx.Response(200, json=[{"taskId": "t1"}])
+        )
+        client.move_task("t1", "p_from", "p_to")
+        request = route.calls.last.request
+        import json
+        payload = json.loads(request.content)
+        assert payload == [
+            {"taskId": "t1", "fromProjectId": "p_from", "toProjectId": "p_to"}
+        ]
+
+    @respx.mock
+    def test_move_task_api_error(self, client: DidaClient) -> None:
+        """move_task raises ApiError on server error."""
+        respx.post("https://api.dida365.com/open/v1/task/move").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        with pytest.raises(ApiError, match="API 错误"):
+            client.move_task("t1", "p1", "p2")
+
+    @respx.mock
+    def test_move_task_auth_error(self, client: DidaClient) -> None:
+        """move_task raises AuthError on 401."""
+        respx.post("https://api.dida365.com/open/v1/task/move").mock(
+            return_value=httpx.Response(401, text="Unauthorized")
+        )
+        with pytest.raises(AuthError):
+            client.move_task("t1", "p1", "p2")
+
+    @respx.mock
+    def test_filter_tasks_payload_uses_proiority(self, client: DidaClient) -> None:
+        """Verify filter_tasks sends 'proiority' (misspelled) not 'priority'."""
+        route = respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        client.filter_tasks(priority=[5, 3])
+        request = route.calls.last.request
+        import json
+        payload = json.loads(request.content)
+        assert "proiority" in payload
+        assert "priority" not in payload
+        assert payload["proiority"] == [5, 3]
+
+    @respx.mock
+    def test_filter_tasks_full_payload(self, client: DidaClient) -> None:
+        """Verify filter_tasks sends all params with correct field names."""
+        route = respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        client.filter_tasks(
+            project_ids=["p1"],
+            start_date="2026-03-01T00:00:00+0800",
+            end_date="2026-03-31T23:59:00+0800",
+            priority=[5],
+            tags=["work", "urgent"],
+            status=[0, 2],
+        )
+        request = route.calls.last.request
+        import json
+        payload = json.loads(request.content)
+        assert payload["projectIds"] == ["p1"]
+        assert payload["startDate"] == "2026-03-01T00:00:00+0800"
+        assert payload["endDate"] == "2026-03-31T23:59:00+0800"
+        assert payload["proiority"] == [5]
+        assert payload["tag"] == ["work", "urgent"]
+        assert payload["status"] == [0, 2]
+
+    @respx.mock
+    def test_filter_tasks_non_list_response(self, client: DidaClient) -> None:
+        """filter_tasks returns [] when API response is not a list."""
+        respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        tasks = client.filter_tasks(project_ids=["p1"])
+        assert tasks == []
+
+    @respx.mock
+    def test_filter_tasks_api_error(self, client: DidaClient) -> None:
+        """filter_tasks raises ApiError on server error."""
+        respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(500, text="Server Error")
+        )
+        with pytest.raises(ApiError):
+            client.filter_tasks()
+
+    @respx.mock
+    def test_list_completed_tasks_full_payload(self, client: DidaClient) -> None:
+        """Verify list_completed_tasks sends all params with correct field names."""
+        route = respx.post("https://api.dida365.com/open/v1/task/completed").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        client.list_completed_tasks(
+            project_ids=["p1", "p2"],
+            start_date="2026-03-01T00:00:00+0800",
+            end_date="2026-03-31T23:59:00+0800",
+        )
+        request = route.calls.last.request
+        import json
+        payload = json.loads(request.content)
+        assert payload["projectIds"] == ["p1", "p2"]
+        assert payload["startDate"] == "2026-03-01T00:00:00+0800"
+        assert payload["endDate"] == "2026-03-31T23:59:00+0800"
+
+    @respx.mock
+    def test_list_completed_tasks_non_list_response(self, client: DidaClient) -> None:
+        """list_completed_tasks returns [] when API response is not a list."""
+        respx.post("https://api.dida365.com/open/v1/task/completed").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        tasks = client.list_completed_tasks(project_ids=["p1"])
+        assert tasks == []
+
+    @respx.mock
+    def test_list_completed_tasks_api_error(self, client: DidaClient) -> None:
+        """list_completed_tasks raises ApiError on server error."""
+        respx.post("https://api.dida365.com/open/v1/task/completed").mock(
+            return_value=httpx.Response(500, text="Server Error")
+        )
+        with pytest.raises(ApiError):
+            client.list_completed_tasks()
+
+    @respx.mock
+    def test_filter_tasks_empty_payload_when_no_params(self, client: DidaClient) -> None:
+        """filter_tasks sends empty payload when no params provided."""
+        route = respx.post("https://api.dida365.com/open/v1/task/filter").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        client.filter_tasks()
+        request = route.calls.last.request
+        import json
+        payload = json.loads(request.content)
+        assert payload == {}
+
+    @respx.mock
+    def test_list_completed_tasks_empty_payload(self, client: DidaClient) -> None:
+        """list_completed_tasks sends empty payload when no params provided."""
+        route = respx.post("https://api.dida365.com/open/v1/task/completed").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        client.list_completed_tasks()
+        request = route.calls.last.request
+        import json
+        payload = json.loads(request.content)
+        assert payload == {}

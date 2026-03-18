@@ -430,6 +430,40 @@ class TestTaskMove:
             )
             assert result.exit_code == 1
 
+    def test_move_api_error(self):
+        """ApiError is handled properly in task move."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            from dida.client import ApiError
+
+            mock_client.move_task.side_effect = ApiError("server error", status_code=500)
+
+            result = runner.invoke(
+                app,
+                ["task", "move", "t1", "--project-id", "p1", "--to-project-id", "p2", "--json"],
+            )
+            assert result.exit_code == 1
+            data = json.loads(result.output)
+            assert data["code"] == "API_ERROR"
+
+    def test_move_auth_error(self):
+        """AuthError is handled properly in task move."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            from dida.client import AuthError
+
+            mock_client.move_task.side_effect = AuthError()
+
+            result = runner.invoke(
+                app,
+                ["task", "move", "t1", "--project-id", "p1", "--to-project-id", "p2", "--json"],
+            )
+            assert result.exit_code == 2
+            data = json.loads(result.output)
+            assert data["code"] == "AUTH_ERROR"
+
 
 class TestTaskBatchCreate:
     """Tests for `dida task batch-create` command."""
@@ -931,6 +965,43 @@ class TestTaskFilter:
             result = runner.invoke(app, ["task", "filter", "--priority", "urgent", "--json"])
             assert result.exit_code == 1
 
+    def test_filter_invalid_status(self):
+        """Error when --status has an invalid value."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+
+            result = runner.invoke(app, ["task", "filter", "--status", "invalid", "--json"])
+            assert result.exit_code == 1
+
+    def test_filter_api_error(self):
+        """ApiError is handled properly in task filter."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            from dida.client import ApiError
+
+            mock_client.filter_tasks.side_effect = ApiError("server error", status_code=500)
+
+            result = runner.invoke(app, ["task", "filter", "--json"])
+            assert result.exit_code == 1
+            data = json.loads(result.output)
+            assert data["code"] == "API_ERROR"
+
+    def test_filter_auth_error(self):
+        """AuthError is handled properly in task filter."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            from dida.client import AuthError
+
+            mock_client.filter_tasks.side_effect = AuthError()
+
+            result = runner.invoke(app, ["task", "filter", "--json"])
+            assert result.exit_code == 2
+            data = json.loads(result.output)
+            assert data["code"] == "AUTH_ERROR"
+
 
 class TestTaskCompleted:
     """Tests for `dida task completed` command."""
@@ -993,3 +1064,55 @@ class TestTaskCompleted:
                 app, ["task", "completed", "--project", "NonExistent", "--json"]
             )
             assert result.exit_code == 1
+
+    def test_completed_invalid_start_date(self):
+        """Error when --start-date has an invalid format."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+
+            result = runner.invoke(
+                app, ["task", "completed", "--start-date", "not-a-date", "--json"]
+            )
+            assert result.exit_code == 1
+
+    def test_completed_invalid_end_date(self):
+        """Error when --end-date has an invalid format."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+
+            result = runner.invoke(
+                app, ["task", "completed", "--end-date", "bad-date", "--json"]
+            )
+            assert result.exit_code == 1
+
+    def test_completed_api_error(self):
+        """ApiError is handled properly in task completed."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            from dida.client import ApiError
+
+            mock_client.list_completed_tasks.side_effect = ApiError(
+                "server error", status_code=500
+            )
+
+            result = runner.invoke(app, ["task", "completed", "--json"])
+            assert result.exit_code == 1
+            data = json.loads(result.output)
+            assert data["code"] == "API_ERROR"
+
+    def test_completed_auth_error(self):
+        """AuthError is handled properly in task completed."""
+        with patch("dida.cli._get_client") as mock_gc:
+            mock_client = MagicMock()
+            mock_gc.return_value = mock_client
+            from dida.client import AuthError
+
+            mock_client.list_completed_tasks.side_effect = AuthError()
+
+            result = runner.invoke(app, ["task", "completed", "--json"])
+            assert result.exit_code == 2
+            data = json.loads(result.output)
+            assert data["code"] == "AUTH_ERROR"
