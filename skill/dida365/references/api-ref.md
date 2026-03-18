@@ -16,29 +16,88 @@
 
 ## Task Management
 
-### dida task add \<title\>
+### dida task create \<title\>
 
 Create a new task.
 
 | Option | Short | Description | Example |
 |---|---|---|---|
-| `--priority` | `-p` | Priority: none/low/medium/high | `--priority high` |
-| `--due` | `-d` | Due date: today/tomorrow/YYYY-MM-DD/ISO 8601 | `--due 2026-03-01` |
 | `--project` | `-P` | Project name or ID (fuzzy match) | `--project "work"` |
 | `--content` | `-c` | Task notes/content | `--content "details"` |
+| `--desc` | | Checklist description | |
+| `--tags` | | Tags (comma-separated) | `--tags "work,urgent"` |
+| `--all-day` | | All-day task | |
+| `--start-date` | `-s` | Start date (today/tomorrow/YYYY-MM-DD/ISO) | `--start-date today` |
+| `--due` | `-d` | Due date (today/tomorrow/YYYY-MM-DD/ISO) | `--due 2026-03-01` |
+| `--timezone` | | Timezone (default: Asia/Shanghai) | |
+| `--reminders` | | Reminders (comma-separated TRIGGER, e.g. TRIGGER:PT0S) | |
+| `--repeat` | | Repeat rule (RRULE, e.g. RRULE:FREQ=DAILY;INTERVAL=1) | |
+| `--priority` | `-p` | Priority: none/low/medium/high | `--priority high` |
+| `--sort-order` | | Sort order value | |
+| `--items` | | Subtasks JSON, e.g. `[{"title":"subtask1"}]` | |
 | `--json` | | Output JSON format | |
+
+### dida task get \<task_id\>
+
+Show task details.
+
+| Option | Description |
+|---|---|
+| `--project-id` | Project ID (skip auto-lookup) |
+| `--json` | Output JSON format |
+
+### dida task update \<task_id\>
+
+Update an existing task. Supports all options from `task create` plus `--title`.
+
+| Option | Short | Description |
+|---|---|---|
+| `--project-id` | | Project ID (skip auto-lookup) |
+| `--title` | `-t` | New title |
+| `--content` | `-c` | Task content |
+| `--desc` | | Description |
+| `--tags` | | Tags (comma-separated) |
+| `--all-day` / `--no-all-day` | | All-day task toggle |
+| `--start-date` | `-s` | Start date |
+| `--due` | `-d` | Due date |
+| `--timezone` | | Timezone |
+| `--reminders` | | Reminders (comma-separated) |
+| `--repeat` | | Repeat rule (RRULE) |
+| `--priority` | `-p` | Priority: none/low/medium/high |
+| `--sort-order` | | Sort order value |
+| `--items` | | Subtasks (JSON) |
+| `--json` | | Output JSON format |
+
+### dida task complete \<task_id\>
+
+Mark a task as complete.
+
+| Option | Description |
+|---|---|
+| `--project-id` | Project ID (skip auto-lookup) |
+| `--json` | Output JSON format |
+
+### dida task delete \<task_id\>
+
+Delete a task.
+
+| Option | Short | Description |
+|---|---|---|
+| `--yes` | `-y` | Skip confirmation prompt |
+| `--project-id` | | Project ID (skip auto-lookup) |
+| `--json` | | Output JSON (skips confirmation) |
 
 ### dida task move \<task_id\>
 
 Move a task to another project.
 
-| Option | Short | Description | Example |
-|---|---|---|---|
-| `--to` | `-T` | Destination project name or ID | `--to "Personal"` |
-| `--from` | `-F` | Source project name or ID | `--from "Work"` |
-| `--project-id` | | Source project ID (skip auto-lookup) | |
-| `--to-project-id` | | Destination project ID (skip fuzzy match) | |
-| `--json` | | Output JSON format | |
+| Option | Short | Description |
+|---|---|---|
+| `--to` | `-T` | Destination project name or ID (required) |
+| `--from` | `-F` | Source project name or ID |
+| `--project-id` | | Source project ID (skip auto-lookup) |
+| `--to-project-id` | | Destination project ID (skip fuzzy match) |
+| `--json` | | Output JSON format |
 
 ### dida task filter
 
@@ -65,39 +124,7 @@ List completed tasks within a time range.
 | `--end-date` | `-e` | Completed time range end |
 | `--json` | | Output JSON format |
 
-### dida task update \<task_id\>
-
-Update an existing task.
-
-| Option | Short | Description |
-|---|---|---|
-| `--title` | `-t` | New title |
-| `--priority` | `-p` | New priority |
-| `--due` | `-d` | New due date |
-| `--content` | `-c` | New content |
-| `--project-id` | | Project ID (skip auto-lookup) |
-| `--json` | | Output JSON format |
-
-### dida task done \<task_id\>
-
-Mark a task as complete.
-
-| Option | Description |
-|---|---|
-| `--project-id` | Project ID (skip auto-lookup) |
-| `--json` | Output JSON format |
-
-### dida task delete \<task_id\>
-
-Delete a task.
-
-| Option | Short | Description |
-|---|---|---|
-| `--yes` | `-y` | Skip confirmation prompt |
-| `--project-id` | | Project ID (skip auto-lookup) |
-| `--json` | | Output JSON (skips confirmation) |
-
-### dida task batch-add
+### dida task batch-create
 
 Batch create tasks from stdin JSON.
 
@@ -117,13 +144,47 @@ List all projects.
 |---|---|
 | `--json` | Output JSON format |
 
-### dida project show \<name-or-id\>
+### dida project get \<name-or-id\>
 
 Show project details and tasks. Supports fuzzy name matching.
 
 | Option | Description |
 |---|---|
 | `--json` | Output JSON format |
+
+### dida project create \<name\>
+
+Create a new project.
+
+| Option | Description |
+|---|---|
+| `--color` | Color (e.g. #F18181) |
+| `--view-mode` | View mode: list/kanban/timeline |
+| `--kind` | Type: TASK/NOTE |
+| `--sort-order` | Sort order value |
+| `--json` | Output JSON format |
+
+### dida project update \<project_id\>
+
+Update a project.
+
+| Option | Short | Description |
+|---|---|---|
+| `--name` | `-n` | New name |
+| `--color` | | Color |
+| `--view-mode` | | View mode: list/kanban/timeline |
+| `--kind` | | Type: TASK/NOTE |
+| `--sort-order` | | Sort order value |
+| `--json` | | Output JSON format |
+
+### dida project delete \<project_id\>
+
+Delete a project.
+
+| Option | Short | Description |
+|---|---|---|
+| `--yes` | `-y` | Skip confirmation |
+| `--json` | | Output JSON format |
 
 ## JSON Output Format
 
@@ -167,7 +228,7 @@ Show project details and tasks. Supports fuzzy name matching.
 
 ## Date Formats
 
-Supported formats for `--due`:
+Supported formats for `--due` and `--start-date`:
 - `today` — end of today (23:59)
 - `tomorrow` — end of tomorrow (23:59)
 - `YYYY-MM-DD` — specific date at 23:59
