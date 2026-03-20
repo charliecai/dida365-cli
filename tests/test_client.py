@@ -166,31 +166,6 @@ class TestDidaClient:
         # Should not raise
         client.delete_task("p1", "t1")
 
-    @respx.mock
-    def test_batch_create_tasks(self, client: DidaClient) -> None:
-        respx.post("https://api.dida365.com/open/v1/batch/task").mock(
-            return_value=httpx.Response(
-                200,
-                json=[
-                    {"id": "t1", "title": "Task 1"},
-                    {"id": "t2", "title": "Task 2"},
-                ],
-            )
-        )
-        tasks = [Task(title="Task 1"), Task(title="Task 2")]
-        created = client.batch_create_tasks(tasks)
-        assert len(created) == 2
-        assert created[0].title == "Task 1"
-
-    @respx.mock
-    def test_batch_create_tasks_empty_response(self, client: DidaClient) -> None:
-        respx.post("https://api.dida365.com/open/v1/batch/task").mock(
-            return_value=httpx.Response(200, json={})
-        )
-        tasks = [Task(title="Task 1")]
-        created = client.batch_create_tasks(tasks)
-        assert created == []
-
     # --- Error handling ---
 
     @respx.mock

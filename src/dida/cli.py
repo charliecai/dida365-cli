@@ -732,64 +732,6 @@ def task_completed(
         client.close()
 
 
-@task_app.command("batch-create")
-def task_batch_create(
-    as_json: JsonOption = False,
-) -> None:
-    """批量创建任务 (从 stdin 读取 JSON)。
-
-    JSON 格式: [{"title": "任务1", "priority": 5}, {"title": "任务2"}]
-    """
-    client = _get_client()
-    try:
-        raw = sys.stdin.read()
-        try:
-            items = json.loads(raw)
-        except json.JSONDecodeError as e:
-            msg = f"JSON 解析失败: {e}"
-            if as_json:
-                output_error_json(msg, "VALIDATION_ERROR")
-            else:
-                output_error(msg)
-            raise typer.Exit(code=1) from None
-
-        if not isinstance(items, list):
-            msg = "输入必须是 JSON 数组"
-            if as_json:
-                output_error_json(msg, "VALIDATION_ERROR")
-            else:
-                output_error(msg)
-            raise typer.Exit(code=1)
-
-        tasks = [Task.from_dict(item) for item in items]
-        created = client.batch_create_tasks(tasks)
-        if as_json:
-            output_json(
-                {
-                    "success": True,
-                    "data": [t.to_json_dict() for t in created],
-                    "count": len(created),
-                }
-            )
-        else:
-            output_success(f"已批量创建 {len(created)} 个任务")
-            for t in created:
-                console.print(f"  - {t.title}")
-    except (ApiError, AuthError) as e:
-        _handle_error(e, as_json=as_json)
-    finally:
-        client.close()
-
-
-# Deprecated alias: task batch-add → task batch-create
-@task_app.command("batch-add", hidden=True, deprecated=True)
-def task_batch_add(
-    as_json: JsonOption = False,
-) -> None:
-    """[已弃用] 请使用 task batch-create。"""
-    task_batch_create(as_json=as_json)
-
-
 # ── Project commands ─────────────────────────────────────────────────
 
 

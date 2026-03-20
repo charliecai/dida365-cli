@@ -465,43 +465,6 @@ class TestTaskMove:
             assert data["code"] == "AUTH_ERROR"
 
 
-class TestTaskBatchCreate:
-    """Tests for `dida task batch-create` command."""
-
-    def test_batch_create(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            mock_client.batch_create_tasks.return_value = [
-                _make_task(id="t1", title="Task 1"),
-                _make_task(id="t2", title="Task 2"),
-            ]
-
-            input_data = json.dumps([{"title": "Task 1"}, {"title": "Task 2"}])
-            result = runner.invoke(app, ["task", "batch-create", "--json"], input=input_data)
-            assert result.exit_code == 0
-            data = json.loads(result.output)
-            assert data["count"] == 2
-
-    def test_batch_create_invalid_json(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-
-            result = runner.invoke(app, ["task", "batch-create", "--json"], input="not json")
-            assert result.exit_code == 1
-
-    def test_batch_create_not_array(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-
-            result = runner.invoke(
-                app, ["task", "batch-create", "--json"], input='{"title":"single"}'
-            )
-            assert result.exit_code == 1
-
-
 class TestProjectCreate:
     """Tests for `dida project create` command."""
 
@@ -700,17 +663,6 @@ class TestDeprecatedAliases:
             result = runner.invoke(app, ["task", "done", "t1", "--json"])
             assert result.exit_code == 0
             mock_client.complete_task.assert_called_once()
-
-    def test_task_batch_add_delegates_to_batch_create(self):
-        with patch("dida.cli._get_client") as mock_gc:
-            mock_client = MagicMock()
-            mock_gc.return_value = mock_client
-            mock_client.batch_create_tasks.return_value = [_make_task()]
-
-            input_data = json.dumps([{"title": "T1"}])
-            result = runner.invoke(app, ["task", "batch-add", "--json"], input=input_data)
-            assert result.exit_code == 0
-            mock_client.batch_create_tasks.assert_called_once()
 
     def test_project_show_delegates_to_get(self):
         with patch("dida.cli._get_client") as mock_gc:

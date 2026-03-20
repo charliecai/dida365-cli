@@ -124,16 +124,6 @@ List completed tasks within a time range.
 | `--end-date` | `-e` | Completed time range end |
 | `--json` | | Output JSON format |
 
-### dida task batch-create
-
-Batch create tasks from stdin JSON.
-
-Input format: `[{"title": "Task 1", "priority": 5}, {"title": "Task 2"}]`
-
-| Option | Description |
-|---|---|
-| `--json` | Output JSON format |
-
 ## Project Management
 
 ### dida project list

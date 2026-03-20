@@ -169,14 +169,6 @@ class DidaClient:
         """Delete a task. DELETE /project/{pid}/task/{tid}"""
         self._request("DELETE", f"/project/{project_id}/task/{task_id}")
 
-    def batch_create_tasks(self, tasks: list[Task]) -> list[Task]:
-        """Batch create tasks. POST /batch/task"""
-        payload = [t.to_create_dict() for t in tasks]
-        data = self._request("POST", "/batch/task", json=payload)
-        if isinstance(data, list):
-            return [Task.from_dict(t) for t in data]
-        return []
-
     def move_task(
         self,
         task_id: str,

@@ -61,6 +61,15 @@ Shortcut: `dida setup --json` checks everything at once. If `"ok": true`, procee
 | "when you can", "low priority", "eventually" | low |
 | (no urgency mentioned) | none |
 
+## All-Day Task Inference
+
+When `--due` or `--start-date` contains only a date (no specific time), automatically add `--all-day`.
+
+| User says | Flags |
+|---|---|
+| "tomorrow", "next Monday", "2026-03-25" | `--due <date> --all-day` |
+| "tomorrow at 3pm", "10:00" | `--due <datetime>` (no `--all-day`) |
+
 ## Workflow Patterns
 
 ### Two-step flow (complete/update/delete)
@@ -77,10 +86,16 @@ dida task complete <task_id> --project-id <project_id> --json
 
 ### Examples
 
-**Create a task:**
+**Create a task (date only → all-day):**
 User: "remind me to buy milk tomorrow, high priority"
 ```bash
-dida task create "buy milk" --priority high --due tomorrow --json
+dida task create "buy milk" --priority high --due tomorrow --all-day --json
+```
+
+**Create a task (with specific time → no all-day):**
+User: "remind me to call the dentist tomorrow at 2pm"
+```bash
+dida task create "call the dentist" --due "tomorrow 14:00" --json
 ```
 
 **Complete a task by description:**
@@ -88,10 +103,10 @@ User: "I finished the report"
 1. `dida task filter --json` → find matching task
 2. `dida task complete <id> --project-id <pid> --json`
 
-**Batch create with project:**
+**Batch create with project (loop single creates):**
 User: "add eggs, bread, cheese to my shopping list"
-1. `dida project list --json` → resolve project ID
-2. `echo '[{"title":"eggs","projectId":"<id>"},...]' | dida task batch-create --json`
+1. `dida project list --json` → resolve project name
+2. Run `dida task create "<title>" --project "<name>" --json` for each item
 
 **Move a task:**
 User: "move that task to my work project"
