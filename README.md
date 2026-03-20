@@ -207,7 +207,7 @@ dida task list --json
 
 ```bash
 dida --version
-# dida 0.3.0
+# dida 0.3.1
 ```
 
 ## Deprecated Commands

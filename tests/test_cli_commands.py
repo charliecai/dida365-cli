@@ -45,7 +45,7 @@ class TestVersionFlag:
     def test_version_output(self):
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "dida 0.3.0" in result.output
+        assert "dida 0.3.1" in result.output
 
     def test_version_short_flag(self):
         result = runner.invoke(app, ["-V"])
